@@ -1,6 +1,0 @@
-# CampusOps scheduled tasks
-# Auto-cancel orders with expired payment timer (every minute)
-* * * * * cd /var/www/backend && php think orders:auto-cancel >> /var/log/cron/auto-cancel.log 2>&1
-
-# Nightly search index cleanup (2:00 AM daily)
-0 2 * * * cd /var/www/backend && php think index:cleanup >> /var/log/cron/index-cleanup.log 2>&1
