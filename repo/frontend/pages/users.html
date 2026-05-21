@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Users — Campus Portal</title>
+  <link rel="stylesheet" href="/css/campus.css" />
+</head>
+<body>
+<div style="display:flex;">
+  <nav id="sidebar">
+    <div id="sidebar-logo"><div class="logo-title">Campus Portal</div><div class="logo-sub">Operations &amp; Logistics</div></div>
+    <div id="sidebar-nav"></div>
+    <div id="sidebar-footer"></div>
+  </nav>
+  <div id="main">
+    <header id="topbar">
+      <span id="page-title">Users</span>
+      <div id="topbar-actions">
+        <button class="btn btn-primary" onclick="openCreateUser()">+ New User</button>
+      </div>
+    </header>
+    <div id="content-wrap">
+      <div class="card">
+        <div id="users-table">Loading…</div>
+        <div id="pagination"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="create-user-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">New User</span>
+      <button class="modal-close" onclick="closeModal('create-user-modal')">&#10005;</button>
+    </div>
+    <form id="create-user-form">
+      <div class="form-group">
+        <label class="form-label">Username *</label>
+        <input type="text" id="u-username" class="form-control" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password * (min 10 chars)</label>
+        <input type="password" id="u-password" class="form-control" minlength="10" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select id="u-role" class="form-control">
+          <option value="regular">Regular User</option>
+          <option value="ops_staff">Operations Staff</option>
+          <option value="team_lead">Team Lead</option>
+          <option value="reviewer">Reviewer</option>
+          <option value="admin">Administrator</option>
+        </select>
+      </div>
+      <div class="form-error" id="create-u-err"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('create-user-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+let currentPage = 1;
+const ROLE_LABELS = { admin:'Administrator', ops_staff:'Operations Staff', team_lead:'Team Lead', reviewer:'Reviewer', regular:'Regular User' };
+
+async function loadUsers(page = 1) {
+  currentPage = page;
+  try {
+    const res = await API.get(`/users?page=${page}&limit=20`);
+    const users = res.data?.data || [];
+    if (!users.length) {
+      document.getElementById('users-table').innerHTML = '<p style="color:var(--c-text-muted);padding:12px 0;">No users found.</p>';
+      return;
+    }
+    document.getElementById('users-table').innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>ID</th><th>Username</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody>${users.map(u => `<tr>
+          <td>${u.id}</td>
+          <td><strong>${u.username}</strong></td>
+          <td>${ROLE_LABELS[u.role] || u.role}</td>
+          <td style="font-size:12px">${fmt(u.created_at)}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${u.username}')">Delete</button></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    renderPagination('pagination', page, Math.ceil((res.data.total||0)/20), 'loadUsers');
+  } catch {
+    document.getElementById('users-table').innerHTML = '<p style="color:var(--c-danger)">Failed to load users.</p>';
+  }
+}
+
+async function deleteUser(id, username) {
+  if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
+  try {
+    await API.delete(`/users/${id}`);
+    toast('User deleted.', 'success');
+    loadUsers(currentPage);
+  } catch (err) {
+    toast(err.data?.msg || 'Delete failed.', 'error');
+  }
+}
+
+function openCreateUser() { document.getElementById('create-user-modal').classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  document.getElementById('create-u-err').textContent = '';
+  try {
+    await API.post('/users', {
+      username: document.getElementById('u-username').value.trim(),
+      password: document.getElementById('u-password').value,
+      role:     document.getElementById('u-role').value,
+    });
+    toast('User created.', 'success');
+    closeModal('create-user-modal');
+    loadUsers(1);
+  } catch (err) {
+    document.getElementById('create-u-err').textContent = err.data?.msg || 'Creation failed.';
+  }
+});
+
+loadUsers(1);
+</script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Search — Campus Portal</title>
+  <link rel="stylesheet" href="/css/campus.css" />
+</head>
+<body>
+<div style="display:flex;">
+  <nav id="sidebar">
+    <div id="sidebar-logo"><div class="logo-title">Campus Portal</div><div class="logo-sub">Operations &amp; Logistics</div></div>
+    <div id="sidebar-nav"></div>
+    <div id="sidebar-footer"></div>
+  </nav>
+  <div id="main">
+    <header id="topbar">
+      <span id="page-title">Search</span>
+    </header>
+    <div id="content-wrap">
+      <div class="card">
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+          <button class="btn btn-primary" id="tab-global" onclick="setTab('global')">Global Search</button>
+          <button class="btn btn-secondary" id="tab-logistics" onclick="setTab('logistics')">Logistics Search</button>
+        </div>
+
+        <div class="search-bar">
+          <input type="text" id="q-input" class="form-control" placeholder="Enter search terms…" autofocus />
+          <select id="sort-select" class="form-control" style="width:150px;">
+            <option value="relevance">Relevance</option>
+            <option value="recency">Recency</option>
+            <option value="popularity">Popularity</option>
+          </select>
+          <button class="btn btn-primary" onclick="doSearch()">Search</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="search-results"><p style="color:var(--c-text-muted)">Enter a query above to search.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+let activeTab = 'global';
+
+function setTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-global').className    = 'btn ' + (tab === 'global' ? 'btn-primary' : 'btn-secondary');
+  document.getElementById('tab-logistics').className = 'btn ' + (tab === 'logistics' ? 'btn-primary' : 'btn-secondary');
+}
+
+async function doSearch() {
+  const q    = document.getElementById('q-input').value.trim();
+  const sort = document.getElementById('sort-select').value;
+  if (!q) { toast('Enter a search query.', 'info'); return; }
+
+  const endpoint = activeTab === 'global'
+    ? `/search?q=${encodeURIComponent(q)}&sort=${sort}`
+    : `/search/logistics?q=${encodeURIComponent(q)}&sort=${sort}`;
+
+  document.getElementById('search-results').innerHTML = 'Searching…';
+  try {
+    const res = await API.get(endpoint);
+    const hits = res.data?.hits || [];
+    if (!hits.length) {
+      document.getElementById('search-results').innerHTML = '<p style="color:var(--c-text-muted)">No results found.</p>';
+      return;
+    }
+    document.getElementById('search-results').innerHTML = hits.map(h => `
+      <div style="border-bottom:1px solid var(--c-border);padding:14px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div style="font-weight:600;font-size:14px;">${h.title || h.display_name || '—'}</div>
+            <div style="font-size:12px;color:var(--c-text-muted);margin-top:3px;">${h.author_name || ''} ${h.type ? '· ' + h.type : ''}</div>
+          </div>
+          <span style="font-size:11px;color:var(--c-text-muted);">${h.score ? 'score: ' + parseFloat(h.score).toFixed(2) : ''}</span>
+        </div>
+        ${h.highlight ? `<div style="font-size:13px;margin-top:8px;line-height:1.5;">${h.highlight}</div>` : ''}
+      </div>`).join('');
+  } catch (err) {
+    document.getElementById('search-results').innerHTML = `<p style="color:var(--c-danger)">${err.data?.msg || 'Search failed.'}</p>`;
+  }
+}
+
+document.getElementById('q-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+</script>
+</body>
+</html>

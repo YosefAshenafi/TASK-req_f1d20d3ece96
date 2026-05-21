@@ -1,0 +1,61 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: campus
+      MYSQL_USER: campus
+      MYSQL_PASSWORD: campus
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "campus", "-pcampus"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DB_HOST: db
+      DB_NAME: campus
+      DB_USER: campus
+      DB_PASSWORD: campus
+      DB_PORT: 3306
+      APP_DEBUG: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/public/uploads
+
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend:/var/www/frontend
+      - ./uploads:/var/www/uploads
+    depends_on:
+      - backend
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.44.0-jammy
+    working_dir: /tests
+    volumes:
+      - ./tests/e2e:/tests
+    environment:
+      BASE_URL: http://nginx:80
+    depends_on:
+      - nginx
+    profiles:
+      - testing
+    command: ["npx", "playwright", "test", "--reporter=line"]
+
+volumes:
+  db_data:

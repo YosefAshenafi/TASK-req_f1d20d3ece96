@@ -1,0 +1,8 @@
+#!/usr/bin/env php
+<?php
+define('APP_PATH', __DIR__ . '/');
+
+require __DIR__ . '/vendor/autoload.php';
+
+$kernel = (new think\App())->console;
+$kernel->run();
