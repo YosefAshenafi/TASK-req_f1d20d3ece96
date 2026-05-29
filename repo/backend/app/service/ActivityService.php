@@ -200,7 +200,9 @@ class ActivityService
 
     public function cancelSignup(int $activityId, int $userId, int $requesterId, string $role): void
     {
-        if ($requesterId !== $userId && $role !== 'admin') {
+        // The signup owner may cancel their own; activity managers (admin,
+        // ops_staff) may cancel anyone's signup.
+        if ($requesterId !== $userId && !in_array($role, ['admin', 'ops_staff'], true)) {
             throw new ForbiddenException('You may only cancel your own signup');
         }
 

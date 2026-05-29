@@ -127,7 +127,7 @@ class RecommendationEngine
                 'score'       => (float)$r['view_count'],
                 'entity_type' => 'activity',
                 'family_id'   => $r['family_id'] ?: ('activity:' . (int)$r['entity_id']),
-            ], (array)$activities);
+            ], $activities->toArray());
 
             foreach ($this->fetchOrderRows($userId, $userRole, $limit) as $r) {
                 $candidates[] = [
@@ -215,10 +215,18 @@ class RecommendationEngine
             foreach ($rows as $row) {
                 if (empty($row['tag'])) continue;
                 $score = 0.6 * $row['signup_count'] + 0.4 * $row['view_count'];
-                Db::table('tag_popularity')->insertOrUpdate(
-                    ['tag' => $row['tag'], 'period_start' => $today],
-                    ['signup_count' => $row['signup_count'], 'view_count' => $row['view_count'], 'score' => $score]
-                );
+                // think-orm has no insertOrUpdate(); upsert on (tag, period_start).
+                $existing = Db::table('tag_popularity')->where('tag', $row['tag'])->where('period_start', $today)->find();
+                if ($existing) {
+                    Db::table('tag_popularity')->where('tag', $row['tag'])->where('period_start', $today)->update([
+                        'signup_count' => $row['signup_count'], 'view_count' => $row['view_count'], 'score' => $score,
+                    ]);
+                } else {
+                    Db::table('tag_popularity')->insert([
+                        'tag' => $row['tag'], 'period_start' => $today,
+                        'signup_count' => $row['signup_count'], 'view_count' => $row['view_count'], 'score' => $score,
+                    ]);
+                }
             }
 
             Log::info('tag_popularity_recomputed', ['date' => $today, 'tags' => count($rows)]);
@@ -242,7 +250,7 @@ class RecommendationEngine
             if ($limit !== null) {
                 $query->limit($limit);
             }
-            return (array)$query->select();
+            return $query->select()->toArray();
         }
 
         // Non-admin: join with orders table to enforce created_by ownership

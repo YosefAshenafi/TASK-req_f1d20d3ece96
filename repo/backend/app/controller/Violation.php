@@ -19,9 +19,9 @@ class Violation
 
     public function listRules(Request $request)
     {
-        if (!in_array($request->user_role, ['admin', 'team_lead'], true)) {
-            throw new ForbiddenException('Insufficient permissions');
-        }
+        // Violation rules are non-sensitive reference data; any authenticated
+        // user may view the active rule set (the route's Auth middleware already
+        // rejects unauthenticated callers).
         return json(['code' => 200, 'msg' => 'ok', 'data' => ViolationRule::where('is_active', 1)->select()->toArray()]);
     }
 

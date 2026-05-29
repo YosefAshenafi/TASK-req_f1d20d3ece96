@@ -39,9 +39,9 @@ class RecommendationTest extends TestCase
         $this->createTaggedActivity($token, 'Music Concert', ['music', 'arts']);
 
         // Seed tag_popularity for sports
-        \think\facade\Db::table('tag_popularity')->insertOrUpdate(
-            ['tag' => 'sports', 'period_start' => date('Y-m-d')],
-            ['signup_count' => 10, 'view_count' => 50, 'score' => 26.0]
+        \think\facade\Db::table('tag_popularity')->where('tag', 'sports')->where('period_start', date('Y-m-d'))->delete();
+        \think\facade\Db::table('tag_popularity')->insert(
+            ['tag' => 'sports', 'period_start' => date('Y-m-d'), 'signup_count' => 10, 'view_count' => 50, 'score' => 26.0]
         );
 
         $resp = $this->http->get('/api/recommendations', [
@@ -80,8 +80,12 @@ class RecommendationTest extends TestCase
         $resp  = $this->http->get('/api/recommendations?page_size=10', [
             'headers' => $this->authHeaders($this->regularToken()),
         ]);
-        $items = json_decode((string)$resp->getBody(), true)['data']['items'];
+        $this->assertSame(200, $resp->getStatusCode());
+        $items = json_decode((string)$resp->getBody(), true)['data']['items'] ?? [];
+        $this->assertIsArray($items, 'Recommendations must return an items array');
 
+        // The 40% diversity cap is only meaningful once enough candidates exist
+        // to dilute a single tag; below that threshold there is nothing to assert.
         if (count($items) >= 5) {
             $sportCount = 0;
             foreach ($items as $item) {
@@ -122,6 +126,13 @@ class RecommendationTest extends TestCase
         $orderId = json_decode((string)$orderResp->getBody(), true)['data']['id'];
 
         usleep(100000);
+
+        // Orders are visible in recommendations only to their creator (object-level
+        // authz, enforced consistently with testRecommendations_regularUser_
+        // doesNotReceiveUnauthorizedOrders). Orders can only be created by ops/admin,
+        // so create as ops then reassign ownership to user2 — the user who requests
+        // recommendations below — so the candidate is legitimately authorized.
+        $this->dbPdo()->prepare('UPDATE orders SET created_by = ? WHERE id = ?')->execute([$user2Id, $orderId]);
 
         $this->dbPdo()->prepare(
             'UPDATE logistics_index SET view_count = 9999 WHERE entity_type = ? AND entity_id = ?'
@@ -186,9 +197,9 @@ class RecommendationTest extends TestCase
         }
 
         // Seed tag_popularity so cold-start picks this family tag
-        \think\facade\Db::table('tag_popularity')->insertOrUpdate(
-            ['tag' => $familyTag, 'period_start' => date('Y-m-d')],
-            ['signup_count' => 5, 'view_count' => 20, 'score' => 12.0]
+        \think\facade\Db::table('tag_popularity')->where('tag', $familyTag)->where('period_start', date('Y-m-d'))->delete();
+        \think\facade\Db::table('tag_popularity')->insert(
+            ['tag' => $familyTag, 'period_start' => date('Y-m-d'), 'signup_count' => 5, 'view_count' => 20, 'score' => 12.0]
         );
 
         $user2Id = $this->dbUserId('user2');
@@ -223,9 +234,9 @@ class RecommendationTest extends TestCase
         $actId = $this->createTaggedActivity($token, 'ExplicitFam Activity', [$familyTag]);
 
         // Seed tag_popularity so cold-start returns this activity
-        \think\facade\Db::table('tag_popularity')->insertOrUpdate(
-            ['tag' => $familyTag, 'period_start' => date('Y-m-d')],
-            ['signup_count' => 5, 'view_count' => 20, 'score' => 13.0]
+        \think\facade\Db::table('tag_popularity')->where('tag', $familyTag)->where('period_start', date('Y-m-d'))->delete();
+        \think\facade\Db::table('tag_popularity')->insert(
+            ['tag' => $familyTag, 'period_start' => date('Y-m-d'), 'signup_count' => 5, 'view_count' => 20, 'score' => 13.0]
         );
 
         $user2Id = $this->dbUserId('user2');
@@ -376,9 +387,9 @@ class RecommendationTest extends TestCase
         }
 
         // Seed tag_popularity so cold-start path picks this family tag
-        \think\facade\Db::table('tag_popularity')->insertOrUpdate(
-            ['tag' => $familyTag, 'period_start' => date('Y-m-d')],
-            ['signup_count' => 5, 'view_count' => 20, 'score' => 11.0]
+        \think\facade\Db::table('tag_popularity')->where('tag', $familyTag)->where('period_start', date('Y-m-d'))->delete();
+        \think\facade\Db::table('tag_popularity')->insert(
+            ['tag' => $familyTag, 'period_start' => date('Y-m-d'), 'signup_count' => 5, 'view_count' => 20, 'score' => 11.0]
         );
 
         // Clear any cached recommendations for user2 so the algorithm runs fresh

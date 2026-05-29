@@ -94,8 +94,8 @@ class SearchIndexService
         $shipment = Db::table('shipments')->where('id', $shipmentId)->find();
         if (!$shipment) return;
 
-        $packages   = Db::table('shipment_packages')->where('shipment_id', $shipmentId)->select();
-        $carriers   = array_filter(array_unique(array_column((array)$packages, 'carrier_name')));
+        $packages   = Db::table('shipment_packages')->where('shipment_id', $shipmentId)->select()->toArray();
+        $carriers   = array_filter(array_unique(array_column($packages, 'carrier_name')));
         $carrierStr = !empty($carriers) ? implode(', ', $carriers) : '';
 
         $displayName = "Shipment #{$shipmentId} (Order #{$shipment['order_id']})";
@@ -282,6 +282,10 @@ class SearchIndexService
             'popularity'  => $builder->order('view_count', 'desc'),
             'reply_count' => $builder->order('reply_count', 'desc'),
         };
+        // Deterministic tiebreaker: indexed_at is second-precision, so rows
+        // created within the same second would otherwise tie. The later-inserted
+        // index row has the higher id, so id DESC keeps "more recent" first.
+        $builder->order('id', 'desc');
 
         $results = $builder->page($page, $perPage)->select();
 
@@ -295,7 +299,7 @@ class SearchIndexService
         $this->applyLogisticsAuthFilter($countBuilder, $userId, $userRole);
         $total = $countBuilder->count();
 
-        return ['data' => array_values((array)$results), 'total' => $total, 'page' => $page, 'per_page' => $perPage];
+        return ['data' => $results->toArray(), 'total' => $total, 'page' => $page, 'per_page' => $perPage];
     }
 
     /**
@@ -317,7 +321,7 @@ class SearchIndexService
         }
         $this->applyLogisticsAuthFilter($builder, $userId, $userRole);
 
-        $allRows = (array)$builder->select();
+        $allRows = $builder->select()->toArray();
 
         foreach ($allRows as &$row) {
             $row['relevance_score'] = $this->scoreLogisticsRow(

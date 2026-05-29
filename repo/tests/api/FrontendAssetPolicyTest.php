@@ -20,21 +20,29 @@ class FrontendAssetPolicyTest extends TestCase
         $this->frontendDir = realpath(__DIR__ . '/../../frontend') ?: '';
     }
 
-    /** @return array<string, array{string}> */
-    private function htmlFiles(): array
+    /**
+     * Data providers run before setUp() on a fresh instance, so this must be
+     * static and self-contained (it cannot read $this->frontendDir).
+     * @return array<string, array{string}>
+     */
+    public static function htmlFiles(): array
     {
-        if ($this->frontendDir === '') {
-            $this->markTestSkipped('frontend directory not mounted at /app/frontend');
-        }
+        $dir = realpath(__DIR__ . '/../../frontend') ?: '';
 
-        $files = array_merge(
-            glob($this->frontendDir . '/*.html') ?: [],
-            glob($this->frontendDir . '/pages/*.html') ?: []
+        $files = $dir === '' ? [] : array_merge(
+            glob($dir . '/*.html') ?: [],
+            glob($dir . '/pages/*.html') ?: []
         );
 
         $cases = [];
         foreach ($files as $path) {
             $cases[basename(dirname($path)) . '/' . basename($path)] = [$path];
+        }
+
+        // Guarantee at least one case so PHPUnit does not error on an empty
+        // provider; the test guards against the empty-path sentinel.
+        if (empty($cases)) {
+            $cases['_no_frontend_dir'] = [''];
         }
         return $cases;
     }
@@ -44,6 +52,9 @@ class FrontendAssetPolicyTest extends TestCase
      */
     public function testNoExternalLayuiCdnReference(string $htmlPath): void
     {
+        if ($htmlPath === '') {
+            $this->markTestSkipped('frontend directory not mounted at /app/frontend');
+        }
         $content = file_get_contents($htmlPath);
         $this->assertNotFalse($content, "Cannot read {$htmlPath}");
 

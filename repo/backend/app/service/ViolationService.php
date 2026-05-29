@@ -55,20 +55,37 @@ class ViolationService
 
     public function updatePointCache(int $userId, ?int $groupId, int $delta): void
     {
-        // User cache — race-safe upsert
-        Db::table('user_point_cache')->insertOrUpdate(
-            ['user_id' => $userId],
-            ['total_points' => Db::raw('total_points + ' . $delta), 'updated_at' => date('Y-m-d H:i:s')]
-        );
+        $this->upsertPointCache('user_point_cache', 'user_id', $userId, $delta);
 
         if ($groupId !== null) {
-            Db::table('group_point_cache')->insertOrUpdate(
-                ['group_id' => $groupId],
-                ['total_points' => Db::raw('total_points + ' . $delta), 'updated_at' => date('Y-m-d H:i:s')]
-            );
+            $this->upsertPointCache('group_point_cache', 'group_id', $groupId, $delta);
         }
 
         $this->checkThresholds($userId, $groupId);
+    }
+
+    /**
+     * Increment (or create) a point-cache row. think-orm has no insertOrUpdate(),
+     * so check-then-update/insert. total_points and last_alert_threshold are
+     * NOT NULL with no default, so a fresh row must set both.
+     */
+    private function upsertPointCache(string $table, string $keyCol, int $keyVal, int $delta): void
+    {
+        $now    = date('Y-m-d H:i:s');
+        $exists = Db::table($table)->where($keyCol, $keyVal)->find();
+        if ($exists) {
+            Db::table($table)->where($keyCol, $keyVal)->update([
+                'total_points' => Db::raw('total_points + ' . $delta),
+                'updated_at'   => $now,
+            ]);
+        } else {
+            Db::table($table)->insert([
+                $keyCol                => $keyVal,
+                'total_points'         => $delta,
+                'last_alert_threshold' => 0,
+                'updated_at'           => $now,
+            ]);
+        }
     }
 
     public function checkThresholds(int $userId, ?int $groupId): void

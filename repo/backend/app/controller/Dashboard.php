@@ -181,7 +181,10 @@ class Dashboard
 
         $format      = $data['format'];
         $widgetData  = [];
-        $layoutArray = json_decode($layout->layout_json, true) ?? [];
+        // layout_json may already be decoded to an array by the model's JSON cast.
+        $layoutArray = is_array($layout->layout_json)
+            ? $layout->layout_json
+            : (json_decode((string)$layout->layout_json, true) ?? []);
         foreach ($layoutArray as $widget) {
             $type = $widget['widget_type'] ?? null;
             if (!$type) {
@@ -214,12 +217,12 @@ class Dashboard
     }
 
     /** GET /api/users/{id}/sensitive — returns masked sensitive fields (admin only) */
-    public function sensitiveFields(Request $request, int $userId): Response
+    public function sensitiveFields(Request $request, int $id): Response
     {
         if ($request->user_role !== 'admin') {
             throw new ForbiddenException('Admin role required.');
         }
-        $user = Db::table('users')->where('id', $userId)->find();
+        $user = Db::table('users')->where('id', $id)->find();
         if (!$user) {
             throw new NotFoundException('User not found.');
         }

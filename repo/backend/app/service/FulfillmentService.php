@@ -75,6 +75,9 @@ class FulfillmentService
         ShipmentPackage::where('shipment_id', $shipmentId)->update(['status' => 'delivered']);
         Log::info('delivery_confirmed', ['shipment_id' => $shipmentId, 'by' => $userId]);
 
+        // Delivery confirmation is an arrival event — notify the order creator.
+        $this->maybeCreateArrivalReminder($shipmentId, 'delivered', (int)$shipment->order_id);
+
         return Shipment::with(['packages'])->find($shipmentId);
     }
 

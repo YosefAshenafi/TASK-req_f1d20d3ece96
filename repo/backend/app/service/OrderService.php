@@ -160,7 +160,10 @@ class OrderService
         ]);
 
         if ($decision === 'approved') {
-            $patch   = json_decode($correction->field_patch, true) ?? [];
+            // field_patch may already be decoded to an array by the model's JSON cast.
+            $patch   = is_array($correction->field_patch)
+                ? $correction->field_patch
+                : (json_decode((string)$correction->field_patch, true) ?? []);
             $dbPatch = [];
             foreach ($patch as $field => $value) {
                 if ($field === 'invoice_address_enc') {
