@@ -47,9 +47,10 @@
 <div id="create-order-modal-body" style="display:none;padding:20px;">
   <form class="layui-form" id="create-order-form" novalidate>
     <div class="layui-form-item">
-      <label class="layui-label">Activity ID *</label>
+      <label class="layui-label">Activity ID</label>
       <div class="layui-input-block">
-        <input type="number" id="o-activity-id" class="layui-input" required />
+        <input type="number" id="o-activity-id" class="layui-input" min="1"
+               placeholder="Optional — link to an existing activity" />
       </div>
     </div>
     <div class="layui-form-item">
@@ -159,7 +160,7 @@ function openCreateOrder() {
     type: 1,
     title: 'New Order',
     area: ['480px'],
-    content: document.getElementById('create-order-modal-body'),
+    content: layui.$('#create-order-modal-body'),
     success: function() { _form.render(); }
   });
 }
@@ -170,8 +171,9 @@ document.getElementById('create-order-form').addEventListener('submit', async (e
   e.preventDefault();
   document.getElementById('create-order-err').textContent = '';
   try {
+    const activityIdRaw = document.getElementById('o-activity-id').value.trim();
     await API.post('/orders', {
-      activity_id: parseInt(document.getElementById('o-activity-id').value),
+      activity_id: activityIdRaw === '' ? null : parseInt(activityIdRaw, 10),
       type:        document.getElementById('o-type').value,
       description: document.getElementById('o-description').value.trim(),
     });

@@ -5,7 +5,7 @@ namespace app\controller;
 use think\Request;
 use think\facade\Log;
 use think\facade\Db;
-use app\model\Activity;
+use app\model\Activity as ActivityModel;
 use app\model\ActivityVersion;
 use app\validate\ActivityValidate;
 use app\service\ActivityService;
@@ -28,7 +28,13 @@ class Activity
         $perPage = min(50, max(1, (int)$request->get('per_page', 20)));
         $role    = $request->user_role;
 
-        $query = Activity::with(['author', 'tags'])->scopeVisible(null, $role);
+        // Role-based visibility: regular users only see published activities
+        // (mirrors Activity::scopeVisible; applied inline because named scopes are
+        // not callable as ->scopeVisible() on an already-built query in ThinkPHP).
+        $query = ActivityModel::with(['author', 'tags']);
+        if ($role === 'regular') {
+            $query->where('status', 'published');
+        }
 
         if ($status = $request->get('status')) {
             $query->where('status', $status);
@@ -41,7 +47,7 @@ class Activity
     public function show(Request $request, int $id)
     {
         $role     = $request->user_role;
-        $activity = Activity::with(['author', 'tags', 'signups'])->find($id);
+        $activity = ActivityModel::with(['author', 'tags', 'signups'])->find($id);
 
         if (!$activity) throw new NotFoundException('Activity not found');
 
@@ -51,7 +57,7 @@ class Activity
         }
 
         // Increment view count (fire-and-forget)
-        try { Activity::where('id', $id)->inc('view_count'); } catch (\Throwable $e) {}
+        try { ActivityModel::where('id', $id)->inc('view_count'); } catch (\Throwable $e) {}
 
         return json(['code' => 200, 'msg' => 'ok', 'data' => $activity->toArray()]);
     }
@@ -115,7 +121,7 @@ class Activity
 
     public function versions(Request $request, int $id)
     {
-        $activity = Activity::find($id);
+        $activity = ActivityModel::find($id);
         if (!$activity) throw new NotFoundException('Activity not found');
 
         if ($request->user_role === 'regular' && $activity->status !== 'published') {
@@ -142,7 +148,7 @@ class Activity
     {
         $userId = (int)$request->user_id;
 
-        $activity = Activity::find($id);
+        $activity = ActivityModel::find($id);
         if (!$activity || $activity->status !== 'published') {
             throw new NotFoundException('Activity not found');
         }

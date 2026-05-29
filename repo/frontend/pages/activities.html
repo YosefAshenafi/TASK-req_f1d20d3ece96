@@ -282,12 +282,13 @@ function renderTable(rows) {
   document.getElementById('activities-table').innerHTML = `
     <table class="layui-table">
       <thead><tr>
-        <th>Title</th><th>Status</th><th>Signups</th>
+        <th style="width:64px">ID</th><th>Title</th><th>Status</th><th>Signups</th>
         <th>Signup Window</th><th>Created</th><th>Actions</th>
       </tr></thead>
       <tbody>${rows.map(a => {
         const canViewLog = canEdit || a.status === 'published';
         return `<tr>
+        <td><span class="cp-id-badge" title="Use this ID when creating an order">#${a.id}</span></td>
         <td style="font-weight:500">
           ${a.title}
           ${renderActivityTags(a)}
@@ -334,7 +335,7 @@ async function showChangelog(activityId) {
     type: 1,
     title: 'Change Log',
     area: ['640px', '70vh'],
-    content: document.getElementById('changelog-modal-body'),
+    content: layui.$('#changelog-modal-body'),
     success: function() {}
   });
 
@@ -377,7 +378,7 @@ function openCreateModal() {
     type: 1,
     title: 'New Activity',
     area: ['520px'],
-    content: document.getElementById('create-modal-body'),
+    content: layui.$('#create-modal-body'),
     success: function() { _form.render(); }
   });
 }
@@ -398,7 +399,7 @@ function openEditModal(a) {
     type: 1,
     title: 'Edit Activity',
     area: ['520px'],
-    content: document.getElementById('edit-modal-body'),
+    content: layui.$('#edit-modal-body'),
     success: function() { _form.render(); }
   });
 }

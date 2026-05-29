@@ -75,8 +75,22 @@ class Order
             return json(['code' => 422, 'msg' => 'Order type is required', 'errors' => ['type' => 'required']], 422);
         }
 
+        // activity_id is optional; when provided it must reference an existing
+        // activity (FK fk_orders_activity). Validate here so a bad reference
+        // returns a clean 422 instead of an unhandled SQL integrity violation.
+        $activityId = $data['activity_id'] ?? null;
+        if ($activityId === '' || $activityId === 0 || $activityId === '0') {
+            $activityId = null;
+        }
+        if ($activityId !== null) {
+            $activityId = (int)$activityId;
+            if (!\app\model\Activity::where('id', $activityId)->find()) {
+                return json(['code' => 422, 'msg' => 'Activity not found for the given activity_id', 'errors' => ['activity_id' => 'not_found']], 422);
+            }
+        }
+
         $row = [
-            'activity_id' => $data['activity_id'] ?? null,
+            'activity_id' => $activityId,
             'created_by'  => $request->user_id,
             'type'        => $data['type'],
             'description' => $data['description'] ?? null,

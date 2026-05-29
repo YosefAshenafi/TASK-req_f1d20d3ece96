@@ -170,7 +170,7 @@ function openCreateModal() {
     type: 1,
     title: 'Add Task',
     area: ['480px'],
-    content: document.getElementById('create-modal-body'),
+    content: layui.$('#create-modal-body'),
     success: function() { _form.render(); }
   });
 }

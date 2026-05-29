@@ -207,7 +207,7 @@ async function showEvents(id) {
     type: 1,
     title: 'Shipment Events',
     area: ['600px', '70vh'],
-    content: document.getElementById('events-modal-body'),
+    content: layui.$('#events-modal-body'),
     success: function() { if (canAct) _form.render(); }
   });
 
@@ -301,7 +301,7 @@ function openCreateModal() {
     type: 1,
     title: 'New Shipment',
     area: ['560px', '75vh'],
-    content: document.getElementById('create-modal-body'),
+    content: layui.$('#create-modal-body'),
     success: function() {}
   });
 }

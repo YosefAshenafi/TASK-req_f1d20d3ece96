@@ -147,7 +147,7 @@ function openCreateUser() {
     type: 1,
     title: 'New User',
     area: ['460px'],
-    content: document.getElementById('create-user-modal-body'),
+    content: layui.$('#create-user-modal-body'),
     success: function() { _form.render(); }
   });
 }

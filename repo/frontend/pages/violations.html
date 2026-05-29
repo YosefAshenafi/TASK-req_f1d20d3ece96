@@ -170,7 +170,7 @@ function openLogModal() {
     type: 1,
     title: 'Log Violation',
     area: ['460px'],
-    content: document.getElementById('log-modal-body'),
+    content: layui.$('#log-modal-body'),
     success: function() { _form.render(); }
   });
 }

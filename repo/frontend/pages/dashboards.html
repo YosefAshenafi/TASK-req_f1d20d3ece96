@@ -510,7 +510,7 @@ function openCreateDashboard() {
     type: 1,
     title: 'New Dashboard',
     area: ['480px'],
-    content: document.getElementById('create-dashboard-modal-body'),
+    content: layui.$('#create-dashboard-modal-body'),
     success: function() { _form.render(); }
   });
 }

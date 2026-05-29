@@ -83,7 +83,16 @@ function renderNav() {
 
   const headerRight = document.getElementById('header-right-nav');
   if (headerRight) {
-    headerRight.innerHTML = `<li class="layui-nav-item"><a href="javascript:;">${s.username} &nbsp;<span style="font-size:11px;opacity:.7">${ROLE_LABELS[s.role] || s.role}</span></a><dl class="layui-nav-child"><dd><a href="javascript:void(0)" onclick="logout()">Sign Out</a></dd></dl></li>`;
+    // Username/role label + an always-visible Sign Out action. Rendered as plain
+    // nav links (not a hover dropdown) so logout is discoverable without relying
+    // on layui.element nav initialization.
+    headerRight.innerHTML =
+      `<li class="layui-nav-item" lay-unselect>
+         <a href="javascript:;" class="cp-user-label">${s.username}<span class="cp-user-role">${ROLE_LABELS[s.role] || s.role}</span></a>
+       </li>
+       <li class="layui-nav-item" lay-unselect>
+         <a href="javascript:void(0)" class="cp-signout" onclick="logout()">Sign Out</a>
+       </li>`;
   }
 
   const titleEl = document.getElementById('page-title');

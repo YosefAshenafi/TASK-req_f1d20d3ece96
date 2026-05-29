@@ -4,7 +4,7 @@ namespace app\controller;
 
 use think\Request;
 use think\facade\Log;
-use app\model\User;
+use app\model\User as UserModel;
 use app\validate\UserValidate;
 use app\exception\ForbiddenException;
 use app\exception\NotFoundException;
@@ -24,7 +24,7 @@ class User
         $page    = max(1, (int)$request->get('page', 1));
         $perPage = min(100, max(1, (int)$request->get('per_page', 20)));
 
-        $paginator = User::field(['id', 'username', 'role', 'failed_attempts', 'locked_until', 'created_at'])
+        $paginator = UserModel::field(['id', 'username', 'role', 'failed_attempts', 'locked_until', 'created_at'])
             ->paginate(['list_rows' => $perPage, 'page' => $page]);
 
         return json(['code' => 200, 'msg' => 'ok', 'data' => $paginator->toArray()]);
@@ -35,7 +35,7 @@ class User
      */
     public function show(Request $request, int $id)
     {
-        $user = User::field(['id', 'username', 'role', 'created_at'])->find($id);
+        $user = UserModel::field(['id', 'username', 'role', 'created_at'])->find($id);
         if (!$user) {
             throw new NotFoundException('User not found');
         }
@@ -61,11 +61,11 @@ class User
         $v    = new UserValidate();
         $v->scene('create')->failException(true)->check($data);
 
-        if (User::where('username', $data['username'])->count()) {
+        if (UserModel::where('username', $data['username'])->count()) {
             throw new ConflictException('Username already taken');
         }
 
-        $user = User::create([
+        $user = UserModel::create([
             'username'      => $data['username'],
             'password_hash' => password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => 12]),
             'role'          => $data['role'],
@@ -81,7 +81,7 @@ class User
      */
     public function update(Request $request, int $id)
     {
-        $target = User::find($id);
+        $target = UserModel::find($id);
         if (!$target) {
             throw new NotFoundException('User not found');
         }
@@ -105,7 +105,7 @@ class User
         }
 
         unset($data['username']); // username is immutable
-        User::where('id', $id)->update($data);
+        UserModel::where('id', $id)->update($data);
 
         return json(['code' => 200, 'msg' => 'User updated', 'data' => []]);
     }
@@ -119,7 +119,7 @@ class User
             throw new ForbiddenException('Administrator access required');
         }
 
-        $user = User::find($id);
+        $user = UserModel::find($id);
         if (!$user) {
             throw new NotFoundException('User not found');
         }

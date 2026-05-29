@@ -47,6 +47,6 @@ class SeedDatabase extends Command
             }
         }
 
-        return self::SUCCESS;
+        return 0;
     }
 }

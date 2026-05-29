@@ -155,12 +155,20 @@ class SearchIndexService
         $sanitized = str_replace(['"', "'", '\\'], '', $query);
         $ftQuery   = '+' . implode('* +', explode(' ', trim($sanitized))) . '*';
 
+        // Inline the fulltext term as a quoted literal rather than a bound param.
+        // A positional "?" inside field() is not converted to a bind (field()'s
+        // 2nd arg is $except), while whereRaw()'s "?" becomes a named param —
+        // mixing the two triggers SQLSTATE[HY093]. $ftQuery is safe to inline:
+        // quotes and backslashes were stripped from $sanitized above, so it
+        // cannot break out of the single-quoted string literal.
+        $ftLiteral = "'" . $ftQuery . "'";
+
         $builder = Db::table('search_index')
-            ->field('*, MATCH(title, body, author_name, tags_text) AGAINST(? IN BOOLEAN MODE) AS relevance_score', [$ftQuery])
-            ->whereRaw('MATCH(title, body, author_name, tags_text) AGAINST(? IN BOOLEAN MODE)', [$ftQuery]);
+            ->fieldRaw("*, MATCH(title, body, author_name, tags_text) AGAINST({$ftLiteral} IN BOOLEAN MODE) AS relevance_score")
+            ->whereRaw("MATCH(title, body, author_name, tags_text) AGAINST({$ftLiteral} IN BOOLEAN MODE)");
 
         $countBuilder = Db::table('search_index')
-            ->whereRaw('MATCH(title, body, author_name, tags_text) AGAINST(? IN BOOLEAN MODE)', [$ftQuery]);
+            ->whereRaw("MATCH(title, body, author_name, tags_text) AGAINST({$ftLiteral} IN BOOLEAN MODE)");
 
         // Regular users: only published activities
         if ($role === 'regular') {
