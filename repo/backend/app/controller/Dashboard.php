@@ -19,7 +19,7 @@ use think\Response;
 
 class Dashboard
 {
-    private const MANAGER_ROLES = ['admin', 'manager'];
+    private const MANAGER_ROLES = ['admin', 'ops_staff', 'team_lead', 'reviewer'];
 
     private function requireManager(Request $request): void
     {
@@ -155,7 +155,11 @@ class Dashboard
             return json(['code' => 422, 'msg' => $e->getMessage()], 422);
         }
 
-        $result = WidgetDataService::getWidgetData($data['widget_type']);
+        $filters = [];
+        if (!empty($data['drill_status'])) {
+            $filters['drill_status'] = $data['drill_status'];
+        }
+        $result = WidgetDataService::getWidgetData($data['widget_type'], $filters);
         return json(['code' => 0, 'data' => $result]);
     }
 

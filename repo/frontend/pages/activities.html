@@ -4,35 +4,43 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Activities — Campus Portal</title>
+  <link rel="stylesheet" href="/vendor/layui/css/layui.min.css" />
   <link rel="stylesheet" href="/css/campus.css" />
 </head>
-<body>
-<div style="display:flex;">
-  <nav id="sidebar">
-    <div id="sidebar-logo">
-      <div class="logo-title">Campus Portal</div>
-      <div class="logo-sub">Operations &amp; Logistics</div>
+<body class="layui-layout-body">
+
+<div class="layui-layout layui-layout-admin">
+
+  <div class="layui-header">
+    <div class="layui-logo cp-logo">
+      <span class="cp-logo-title">Campus Portal</span>
+      <span class="cp-logo-sub">Operations &amp; Logistics</span>
     </div>
-    <div id="sidebar-nav"></div>
-    <div id="sidebar-footer"></div>
-  </nav>
+    <ul class="layui-nav layui-layout-right" id="header-right-nav"></ul>
+  </div>
 
-  <div id="main">
-    <header id="topbar">
-      <span id="page-title">Activities</span>
-      <div id="topbar-actions">
-        <button class="btn btn-primary" id="btn-new-activity" style="display:none;" onclick="openCreateModal()">
-          + New Activity
-        </button>
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <ul class="layui-nav layui-nav-tree" lay-filter="side-nav" id="sidebar-nav"></ul>
+    </div>
+  </div>
+
+  <div class="layui-body">
+    <div class="cp-body-inner">
+      <div class="cp-page-bar">
+        <span class="cp-page-title" id="page-title">Activities</span>
+        <div class="cp-page-actions">
+          <button class="layui-btn" id="btn-new-activity" style="display:none;" onclick="openCreateModal()">
+            + New Activity
+          </button>
+        </div>
       </div>
-    </header>
 
-    <div id="content-wrap">
       <!-- Search & Filters -->
       <div class="card" style="padding:16px 20px;margin-bottom:16px;">
         <div class="search-bar">
-          <input type="text" id="search-input" class="form-control" placeholder="Search activities…" />
-          <select id="filter-status" class="form-control" style="width:160px;">
+          <input type="text" id="search-input" class="layui-input" placeholder="Search activities…" style="flex:1;min-width:160px;" />
+          <select id="filter-status" class="layui-select" style="width:160px;">
             <option value="">All Statuses</option>
             <option value="draft">Draft</option>
             <option value="published">Published</option>
@@ -40,16 +48,16 @@
             <option value="completed">Completed</option>
             <option value="archived">Archived</option>
           </select>
-          <select id="filter-sort" class="form-control" style="width:140px;">
+          <select id="filter-sort" class="layui-select" style="width:140px;">
             <option value="created_at">Newest</option>
             <option value="popularity">Popular</option>
           </select>
-          <button class="btn btn-secondary" onclick="loadActivities(1)">Search</button>
+          <button class="layui-btn layui-btn-primary" onclick="loadActivities(1)">Search</button>
         </div>
         <!-- Recommendations strip -->
-        <div id="recommendations-strip" style="display:none;margin-top:10px;">
-          <div style="font-size:12px;color:var(--c-text-muted);margin-bottom:6px;">Recommended for you</div>
-          <div id="rec-list" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+        <div id="recommendations-strip" style="display:none;">
+          <div class="rec-label">Recommended for you</div>
+          <div id="rec-list"></div>
         </div>
       </div>
 
@@ -60,75 +68,156 @@
       </div>
     </div>
   </div>
+
 </div>
 
-<!-- Create Activity Modal -->
-<div class="modal-overlay" id="create-modal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">New Activity</span>
-      <button class="modal-close" onclick="closeModal('create-modal')">&#10005;</button>
+<!-- Create Activity Modal body (hidden) -->
+<div id="create-modal-body" style="display:none;padding:20px;">
+  <form class="layui-form" id="create-form" novalidate>
+    <div class="layui-form-item">
+      <label class="layui-label">Title *</label>
+      <div class="layui-input-block">
+        <input type="text" id="f-title" class="layui-input" required />
+      </div>
     </div>
-    <form id="create-form" novalidate>
-      <div class="form-group">
-        <label class="form-label">Title *</label>
-        <input type="text" id="f-title" class="form-control" required />
+    <div class="layui-form-item">
+      <label class="layui-label">Description</label>
+      <div class="layui-input-block">
+        <textarea id="f-description" class="layui-textarea" rows="3"></textarea>
       </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <textarea id="f-description" class="form-control" rows="3"></textarea>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="form-group">
-          <label class="form-label">Signup Start</label>
-          <input type="datetime-local" id="f-signup-start" class="form-control" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Signup End</label>
-          <input type="datetime-local" id="f-signup-end" class="form-control" />
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Max Headcount</label>
-        <input type="number" id="f-max-headcount" class="form-control" min="1" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Required Supplies</label>
-        <input type="text" id="f-required-supplies" class="form-control" placeholder="Comma-separated list" />
-      </div>
-      <div class="form-error" id="create-err"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-        <button type="button" class="btn btn-secondary" onclick="closeModal('create-modal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Create Activity</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Changelog / Version Diff Modal -->
-<div class="modal-overlay" id="changelog-modal">
-  <div class="modal-box" style="max-width:640px;">
-    <div class="modal-header">
-      <span class="modal-title">Change Log</span>
-      <button class="modal-close" onclick="closeModal('changelog-modal')">&#10005;</button>
     </div>
-    <div id="changelog-content"></div>
-  </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Signup Start</label>
+      <div class="layui-input-block">
+        <input type="datetime-local" id="f-signup-start" class="layui-input" />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Signup End</label>
+      <div class="layui-input-block">
+        <input type="datetime-local" id="f-signup-end" class="layui-input" />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Max Headcount</label>
+      <div class="layui-input-block">
+        <input type="number" id="f-max-headcount" class="layui-input" min="1" />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Eligibility Tags</label>
+      <div class="layui-input-block">
+        <input type="text" id="f-tags" class="layui-input" placeholder="Comma-separated tags, e.g. outdoor, sports" />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Required Supplies</label>
+      <div class="layui-input-block">
+        <input type="text" id="f-required-supplies" class="layui-input" placeholder="Comma-separated list" />
+      </div>
+    </div>
+    <div class="form-error" id="create-err"></div>
+    <div class="layui-form-item" style="text-align:right;margin-bottom:0;">
+      <button type="button" class="layui-btn layui-btn-primary" onclick="closeCreateModal()">Cancel</button>
+      <button type="submit" class="layui-btn">Create Activity</button>
+    </div>
+  </form>
 </div>
 
-<div id="toast-container"></div>
+<!-- Changelog Modal body (hidden) -->
+<div id="changelog-modal-body" style="display:none;padding:20px;max-height:60vh;overflow-y:auto;">
+  <div id="changelog-content"></div>
+</div>
+
+<!-- Edit Activity Modal body (hidden) -->
+<div id="edit-modal-body" style="display:none;padding:20px;">
+  <form class="layui-form" id="edit-form" novalidate>
+    <input type="hidden" id="ef-id" />
+    <div class="layui-form-item">
+      <label class="layui-label">Title *</label>
+      <div class="layui-input-block">
+        <input type="text" id="ef-title" class="layui-input" required />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Description</label>
+      <div class="layui-input-block">
+        <textarea id="ef-description" class="layui-textarea" rows="3"></textarea>
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Signup Start</label>
+      <div class="layui-input-block">
+        <input type="datetime-local" id="ef-signup-start" class="layui-input" />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Signup End</label>
+      <div class="layui-input-block">
+        <input type="datetime-local" id="ef-signup-end" class="layui-input" />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Max Headcount</label>
+      <div class="layui-input-block">
+        <input type="number" id="ef-max-headcount" class="layui-input" min="1" />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Eligibility Tags</label>
+      <div class="layui-input-block">
+        <input type="text" id="ef-tags" class="layui-input" placeholder="Comma-separated tags" />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Required Supplies</label>
+      <div class="layui-input-block">
+        <input type="text" id="ef-required-supplies" class="layui-input" placeholder="Comma-separated list" />
+      </div>
+    </div>
+    <div class="form-error" id="edit-err"></div>
+    <div class="layui-form-item" style="text-align:right;margin-bottom:0;">
+      <button type="button" class="layui-btn layui-btn-primary" onclick="closeEditModal()">Cancel</button>
+      <button type="submit" class="layui-btn">Save Changes</button>
+    </div>
+  </form>
+</div>
+
+<script src="/vendor/layui/layui.min.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/app.js"></script>
 <script>
-let currentPage = 1;
+var _layer, _form, _element;
+var _createModalIdx, _changelogModalIdx, _editModalIdx;
+var currentPage = 1;
+var _activityMap = {};
 
-async function loadActivities(page = 1) {
-  currentPage = page;
+layui.use(['element', 'layer', 'form', 'laypage'], function() {
+  _layer   = layui.layer;
+  _form    = layui.form;
+  _element = layui.element;
+
+  renderNav();
+  _element.render('nav', 'side-nav');
+
+  // Show create button for staff/admin
+  if (hasRole('admin', 'ops_staff')) {
+    document.getElementById('btn-new-activity').style.display = '';
+  }
+
+  // Load recommendations
+  loadRecs();
+
+  loadActivities(1);
+});
+
+async function loadActivities(page) {
+  currentPage = page || 1;
   const q      = document.getElementById('search-input').value.trim();
   const status = document.getElementById('filter-status').value;
   const sort   = document.getElementById('filter-sort').value;
 
-  const params = new URLSearchParams({ page, limit: 12, sort });
+  const params = new URLSearchParams({ page: currentPage, per_page: 12, sort });
   if (q) params.set('q', q);
   if (status) params.set('status', status);
 
@@ -136,37 +225,86 @@ async function loadActivities(page = 1) {
     const res = await API.get('/activities?' + params.toString());
     renderTable(res.data.data || []);
     const meta = res.data;
-    renderPagination('pagination', page, Math.ceil((meta.total || 0) / 12),
-      'loadActivities');
+    const totalPages = meta.last_page || Math.ceil((meta.total || 0) / 12);
+    renderPagination('pagination', currentPage, totalPages, 'loadActivities');
   } catch {
-    document.getElementById('activities-table').innerHTML = '<p style="color:var(--c-danger)">Failed to load activities.</p>';
+    document.getElementById('activities-table').innerHTML =
+      '<p style="color:var(--c-danger)">Failed to load activities.</p>';
   }
+}
+
+function normalizeActivityTags(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(t => (typeof t === 'string' ? t : (t && typeof t === 'object' ? String(t.tag ?? '') : '')))
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+function renderActivityTags(a) {
+  const tags = normalizeActivityTags(a.tags);
+  if (!tags.length) return '';
+  return '<div style="margin-top:4px">' +
+    tags.map(t => `<span class="badge badge-info" style="font-size:11px">${t}</span>`).join(' ') +
+    '</div>';
+}
+
+function normalizeActivitySupplies(raw) {
+  if (Array.isArray(raw)) return raw.map(s => String(s).trim()).filter(Boolean);
+  if (typeof raw === 'string' && raw) return raw.split(',').map(s => s.trim()).filter(Boolean);
+  return [];
+}
+
+function renderActivitySupplies(a) {
+  const supplies = normalizeActivitySupplies(a.required_supplies);
+  if (!supplies.length) return '';
+  return `<div style="font-size:11px;color:var(--c-text-muted);margin-top:3px">Supplies: ${supplies.join(', ')}</div>`;
+}
+
+function parseTagInput(str) {
+  if (!str || typeof str !== 'string') return [];
+  return [...new Set(str.split(',').map(t => t.trim()).filter(Boolean))];
+}
+
+function fmtDatetimeLocal(str) {
+  if (!str) return '';
+  return String(str).slice(0, 16).replace(' ', 'T');
 }
 
 function renderTable(rows) {
   if (!rows.length) {
-    document.getElementById('activities-table').innerHTML = '<p style="color:var(--c-text-muted);padding:12px 0;">No activities found.</p>';
+    document.getElementById('activities-table').innerHTML =
+      '<p style="color:var(--c-text-muted);padding:12px 0;">No activities found.</p>';
     return;
   }
   const canEdit = hasRole('admin', 'ops_staff');
+  rows.forEach(a => { _activityMap[a.id] = a; });
   document.getElementById('activities-table').innerHTML = `
-    <table class="data-table">
+    <table class="layui-table">
       <thead><tr>
         <th>Title</th><th>Status</th><th>Signups</th>
         <th>Signup Window</th><th>Created</th><th>Actions</th>
       </tr></thead>
-      <tbody>${rows.map(a => `<tr>
-        <td style="font-weight:500">${a.title}</td>
+      <tbody>${rows.map(a => {
+        const canViewLog = canEdit || a.status === 'published';
+        return `<tr>
+        <td style="font-weight:500">
+          ${a.title}
+          ${renderActivityTags(a)}
+          ${renderActivitySupplies(a)}
+        </td>
         <td>${badge(a.status)}</td>
         <td>${a.signup_count || 0}${a.max_headcount ? ' / ' + a.max_headcount : ''}</td>
-        <td style="font-size:12px">${a.signup_start ? fmt(a.signup_start) + '<br>' + fmt(a.signup_end) : '—'}</td>
+        <td style="font-size:12px">${a.signup_open_at ? fmt(a.signup_open_at) + '<br>' + fmt(a.signup_close_at) : '—'}</td>
         <td style="font-size:12px">${fmt(a.created_at)}</td>
         <td style="white-space:nowrap;">
-          ${a.status === 'published' ? `<button class="btn btn-secondary btn-sm" onclick="signup(${a.id})">Sign Up</button> ` : ''}
-          ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="showChangelog(${a.id})">Log</button>` : ''}
-          ${canEdit && a.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="transition(${a.id},'published')">Publish</button>` : ''}
+          ${a.status === 'published' ? `<button class="layui-btn layui-btn-sm layui-btn-normal" onclick="signup(${a.id})">Sign Up</button> ` : ''}
+          ${canEdit ? `<button class="layui-btn layui-btn-sm layui-btn-warm" onclick="openEditModal(_activityMap[${a.id}])">Edit</button> ` : ''}
+          ${canViewLog ? `<button class="layui-btn layui-btn-sm layui-btn-primary" onclick="showChangelog(${a.id})">Log</button> ` : ''}
+          ${canEdit && a.status === 'draft' ? `<button class="layui-btn layui-btn-sm" onclick="transition(${a.id},'published')">Publish</button>` : ''}
         </td>
-      </tr>`).join('')}</tbody>
+      </tr>`;
+      }).join('')}</tbody>
     </table>`;
 }
 
@@ -192,12 +330,20 @@ async function transition(activityId, newStatus) {
 
 async function showChangelog(activityId) {
   document.getElementById('changelog-content').innerHTML = 'Loading…';
-  document.getElementById('changelog-modal').classList.add('open');
+  _changelogModalIdx = _layer.open({
+    type: 1,
+    title: 'Change Log',
+    area: ['640px', '70vh'],
+    content: document.getElementById('changelog-modal-body'),
+    success: function() {}
+  });
+
   try {
     const res = await API.get(`/activities/${activityId}/versions`);
     const versions = res.data || [];
     if (!versions.length) {
-      document.getElementById('changelog-content').innerHTML = '<p style="color:var(--c-text-muted)">No versions recorded.</p>';
+      document.getElementById('changelog-content').innerHTML =
+        '<p style="color:var(--c-text-muted)">No versions recorded.</p>';
       return;
     }
     document.getElementById('changelog-content').innerHTML = versions.map(v => `
@@ -206,44 +352,98 @@ async function showChangelog(activityId) {
           <strong>Version ${v.version_number}</strong>
           <span style="font-size:12px;color:var(--c-text-muted)">${fmt(v.created_at)}</span>
         </div>
-        <div style="font-size:13px;">${formatDiff(v.diff_json)}</div>
+        <div style="font-size:13px;">${formatDiff(v.diff)}</div>
       </div>`).join('');
   } catch {
-    document.getElementById('changelog-content').innerHTML = '<p style="color:var(--c-danger)">Failed to load versions.</p>';
+    document.getElementById('changelog-content').innerHTML =
+      '<p style="color:var(--c-danger)">Failed to load versions.</p>';
   }
 }
 
 function formatDiff(diffJson) {
   if (!diffJson) return '<em>No changes recorded.</em>';
   let diff;
-  try { diff = typeof diffJson === 'string' ? JSON.parse(diffJson) : diffJson; } catch { return diffJson; }
-  return Object.entries(diff).map(([field, change]) =>
-    `<div><strong>${field}</strong>: <del style="color:#ef4444">${change.from ?? '—'}</del> → <mark>${change.to ?? '—'}</mark></div>`
-  ).join('');
+  try { diff = typeof diffJson === 'string' ? JSON.parse(diffJson) : diffJson; } catch { return String(diffJson); }
+  if (!diff || typeof diff !== 'object') return '<em>No changes recorded.</em>';
+  return Object.entries(diff).map(([field, change]) => {
+    const before = change.from ?? change.old ?? '—';
+    const after  = change.to   ?? change.new ?? '—';
+    return `<div><strong>${field}</strong>: <del style="color:#ef4444">${before}</del> → <mark>${after}</mark></div>`;
+  }).join('');
 }
 
 function openCreateModal() {
-  document.getElementById('create-modal').classList.add('open');
+  _createModalIdx = _layer.open({
+    type: 1,
+    title: 'New Activity',
+    area: ['520px'],
+    content: document.getElementById('create-modal-body'),
+    success: function() { _form.render(); }
+  });
 }
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
+
+function closeCreateModal() { _layer.close(_createModalIdx); }
+
+function openEditModal(a) {
+  document.getElementById('ef-id').value              = a.id;
+  document.getElementById('ef-title').value           = a.title || '';
+  document.getElementById('ef-description').value     = a.body || '';
+  document.getElementById('ef-signup-start').value    = fmtDatetimeLocal(a.signup_open_at);
+  document.getElementById('ef-signup-end').value      = fmtDatetimeLocal(a.signup_close_at);
+  document.getElementById('ef-max-headcount').value   = a.max_headcount || '';
+  document.getElementById('ef-tags').value            = normalizeActivityTags(a.tags).join(', ');
+  document.getElementById('ef-required-supplies').value = normalizeActivitySupplies(a.required_supplies).join(', ');
+  document.getElementById('edit-err').textContent     = '';
+  _editModalIdx = _layer.open({
+    type: 1,
+    title: 'Edit Activity',
+    area: ['520px'],
+    content: document.getElementById('edit-modal-body'),
+    success: function() { _form.render(); }
+  });
 }
+
+function closeEditModal() { _layer.close(_editModalIdx); }
+
+document.getElementById('edit-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  document.getElementById('edit-err').textContent = '';
+  const id = document.getElementById('ef-id').value;
+  const body = {
+    title:             document.getElementById('ef-title').value.trim(),
+    body:              document.getElementById('ef-description').value.trim(),
+    signup_open_at:    document.getElementById('ef-signup-start').value || null,
+    signup_close_at:   document.getElementById('ef-signup-end').value || null,
+    max_headcount:     parseInt(document.getElementById('ef-max-headcount').value) || null,
+    tags:              parseTagInput(document.getElementById('ef-tags').value),
+    required_supplies: normalizeActivitySupplies(document.getElementById('ef-required-supplies').value),
+  };
+  try {
+    await API.put(`/activities/${id}`, body);
+    toast('Activity updated.', 'success');
+    closeEditModal();
+    loadActivities(currentPage);
+  } catch (err) {
+    document.getElementById('edit-err').textContent = err.data?.msg || 'Update failed.';
+  }
+});
 
 document.getElementById('create-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   document.getElementById('create-err').textContent = '';
   const body = {
-    title:            document.getElementById('f-title').value.trim(),
-    description:      document.getElementById('f-description').value.trim(),
-    signup_start:     document.getElementById('f-signup-start').value || null,
-    signup_end:       document.getElementById('f-signup-end').value || null,
-    max_headcount:    parseInt(document.getElementById('f-max-headcount').value) || null,
-    required_supplies:document.getElementById('f-required-supplies').value.trim(),
+    title:             document.getElementById('f-title').value.trim(),
+    body:              document.getElementById('f-description').value.trim(),
+    signup_open_at:    document.getElementById('f-signup-start').value || null,
+    signup_close_at:   document.getElementById('f-signup-end').value || null,
+    max_headcount:     parseInt(document.getElementById('f-max-headcount').value) || null,
+    tags:              parseTagInput(document.getElementById('f-tags').value),
+    required_supplies: normalizeActivitySupplies(document.getElementById('f-required-supplies').value),
   };
   try {
     await API.post('/activities', body);
     toast('Activity created.', 'success');
-    closeModal('create-modal');
+    closeCreateModal();
     loadActivities(1);
   } catch (err) {
     document.getElementById('create-err').textContent = err.data?.msg || 'Creation failed.';
@@ -254,28 +454,18 @@ document.getElementById('search-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') loadActivities(1);
 });
 
-// Show create button for staff/admin
-if (hasRole('admin', 'ops_staff')) {
-  document.getElementById('btn-new-activity').style.display = '';
-}
-
-// Load recommendations
-(async function loadRecs() {
+async function loadRecs() {
   try {
     const res = await API.get('/recommendations');
-    const recs = res.data || [];
+    const recs = res.data?.items || [];
     if (recs.length) {
       document.getElementById('recommendations-strip').style.display = '';
       document.getElementById('rec-list').innerHTML = recs.slice(0, 5).map(r =>
-        `<a href="/pages/activities.html?id=${r.id}" style="
-          background:var(--c-white);border:1px solid var(--c-border);border-radius:var(--r-md);
-          padding:8px 14px;font-size:13px;color:var(--c-accent);text-decoration:none;
-          white-space:nowrap;">${r.title}</a>`).join('');
+        `<a href="/pages/activities.html?id=${r.entity_id}" class="rec-chip">${r.title}</a>`
+      ).join('');
     }
   } catch { /* recommendations optional */ }
-})();
-
-loadActivities(1);
+}
 </script>
 </body>
 </html>

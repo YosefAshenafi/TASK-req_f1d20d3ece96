@@ -6,6 +6,7 @@ use think\Request;
 use think\facade\Log;
 use app\model\Shipment;
 use app\service\FulfillmentService;
+use app\service\SearchIndexService;
 use app\exception\ForbiddenException;
 use app\exception\NotFoundException;
 
@@ -46,11 +47,23 @@ class Fulfillment
         if (empty($packages)) return json(['code' => 422, 'msg' => 'At least one package required', 'errors' => []], 422);
 
         $shipment = $this->service->createShipment($orderId, $packages, (int)$request->user_id);
+
+        try { (new SearchIndexService())->indexShipment((int)$shipment->id); } catch (\Throwable $e) { Log::warning('shipment_index_failed', ['error' => $e->getMessage()]); }
+
         return json(['code' => 201, 'msg' => 'Shipment created', 'data' => $shipment->toArray()], 201);
     }
 
     public function addEvent(Request $request, int $id)
     {
+        if (!in_array($request->user_role, ['admin', 'ops_staff'], true)) {
+            throw new ForbiddenException('Operations Staff access required');
+        }
+        $shipment = Shipment::find($id);
+        if (!$shipment) throw new NotFoundException('Shipment not found');
+        if ($request->user_role !== 'admin' && $shipment->created_by !== $request->user_id) {
+            throw new ForbiddenException('Access denied');
+        }
+
         $data = $request->post();
         $eventType = $data['event_type'] ?? '';
         $valid = ['dispatched', 'in_transit', 'delivered', 'exception'];
@@ -63,12 +76,33 @@ class Fulfillment
 
     public function confirmDelivery(Request $request, int $id)
     {
+        if (!in_array($request->user_role, ['admin', 'ops_staff'], true)) {
+            throw new ForbiddenException('Operations Staff access required');
+        }
+        $shipment = Shipment::find($id);
+        if (!$shipment) throw new NotFoundException('Shipment not found');
+        if ($request->user_role !== 'admin' && $shipment->created_by !== $request->user_id) {
+            throw new ForbiddenException('Access denied');
+        }
+
         $shipment = $this->service->confirmDelivery($id, (int)$request->user_id);
+
+        try { (new SearchIndexService())->indexShipment($id); } catch (\Throwable $e) { Log::warning('shipment_index_failed', ['error' => $e->getMessage()]); }
+
         return json(['code' => 200, 'msg' => 'Delivery confirmed', 'data' => ['status' => $shipment->status]]);
     }
 
     public function recordException(Request $request, int $id)
     {
+        if (!in_array($request->user_role, ['admin', 'ops_staff'], true)) {
+            throw new ForbiddenException('Operations Staff access required');
+        }
+        $shipment = Shipment::find($id);
+        if (!$shipment) throw new NotFoundException('Shipment not found');
+        if ($request->user_role !== 'admin' && $shipment->created_by !== $request->user_id) {
+            throw new ForbiddenException('Access denied');
+        }
+
         $data  = $request->post();
         $event = $this->service->recordException($id, $data['note'] ?? '', (int)$request->user_id);
         return json(['code' => 201, 'msg' => 'Exception recorded', 'data' => $event->toArray()], 201);

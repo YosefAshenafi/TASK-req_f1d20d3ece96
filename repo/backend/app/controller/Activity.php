@@ -4,10 +4,12 @@ namespace app\controller;
 
 use think\Request;
 use think\facade\Log;
+use think\facade\Db;
 use app\model\Activity;
 use app\model\ActivityVersion;
 use app\validate\ActivityValidate;
 use app\service\ActivityService;
+use app\service\BehaviorTracker;
 use app\exception\ForbiddenException;
 use app\exception\NotFoundException;
 
@@ -101,7 +103,14 @@ class Activity
             return json(['code' => 422, 'msg' => $e->getMessage(), 'errors' => []], 422);
         }
 
-        return json(['code' => 200, 'msg' => 'Status updated', 'data' => ['status' => $activity->status]]);
+        return json(['code' => 200, 'msg' => 'Status updated', 'data' => [
+            'id'             => $activity->id,
+            'status'         => $activity->status,
+            'published_at'   => $activity->published_at,
+            'in_progress_at' => $activity->in_progress_at,
+            'completed_at'   => $activity->completed_at,
+            'archived_at'    => $activity->archived_at,
+        ]]);
     }
 
     public function versions(Request $request, int $id)
@@ -127,5 +136,45 @@ class Activity
     {
         $this->service->cancelSignup($id, $uid, (int)$request->user_id, $request->user_role);
         return json(['code' => 200, 'msg' => 'Signup canceled', 'data' => []]);
+    }
+
+    public function save(Request $request, int $id)
+    {
+        $userId = (int)$request->user_id;
+
+        $activity = Activity::find($id);
+        if (!$activity || $activity->status !== 'published') {
+            throw new NotFoundException('Activity not found');
+        }
+
+        $existing = Db::table('activity_saves')
+            ->where('user_id', $userId)
+            ->where('activity_id', $id)
+            ->find();
+
+        if (!$existing) {
+            Db::table('activity_saves')->insert([
+                'user_id'     => $userId,
+                'activity_id' => $id,
+                'saved_at'    => date('Y-m-d H:i:s'),
+            ]);
+            try {
+                (new BehaviorTracker())->record($userId, 'activity', $id, 'save');
+            } catch (\Throwable $e) {}
+        }
+
+        return json(['code' => 200, 'msg' => 'Activity saved', 'data' => []]);
+    }
+
+    public function unsave(Request $request, int $id)
+    {
+        $userId = (int)$request->user_id;
+
+        Db::table('activity_saves')
+            ->where('user_id', $userId)
+            ->where('activity_id', $id)
+            ->delete();
+
+        return json(['code' => 200, 'msg' => 'Activity unsaved', 'data' => []]);
     }
 }

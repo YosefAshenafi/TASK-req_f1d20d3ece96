@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tasks — Campus Portal</title>
+  <link rel="stylesheet" href="/vendor/layui/css/layui.min.css" />
+  <link rel="stylesheet" href="/css/campus.css" />
+</head>
+<body class="layui-layout-body">
+
+<div class="layui-layout layui-layout-admin">
+
+  <div class="layui-header">
+    <div class="layui-logo cp-logo">
+      <span class="cp-logo-title">Campus Portal</span>
+      <span class="cp-logo-sub">Operations &amp; Logistics</span>
+    </div>
+    <ul class="layui-nav layui-layout-right" id="header-right-nav"></ul>
+  </div>
+
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <ul class="layui-nav layui-nav-tree" lay-filter="side-nav" id="sidebar-nav"></ul>
+    </div>
+  </div>
+
+  <div class="layui-body">
+    <div class="cp-body-inner">
+      <div class="cp-page-bar">
+        <span class="cp-page-title" id="page-title">Tasks</span>
+      </div>
+
+      <!-- Activity picker -->
+      <div class="card" style="padding:16px 20px;margin-bottom:16px;">
+        <div class="search-bar">
+          <input type="number" id="activity-id-input" class="layui-input"
+                 placeholder="Activity ID" style="width:180px;flex:none;" />
+          <button class="layui-btn" onclick="loadTasks()">Load Tasks</button>
+          <button class="layui-btn layui-btn-primary" id="btn-add-task"
+                  style="display:none;" onclick="openCreateModal()">+ Add Task</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="tasks-table">
+          <p style="color:var(--c-text-muted);padding:12px 0;">Enter an Activity ID above to view its tasks.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Create Task Modal body (hidden) -->
+<div id="create-modal-body" style="display:none;padding:20px;">
+  <form class="layui-form" id="create-form" novalidate>
+    <div class="layui-form-item">
+      <label class="layui-label">Title *</label>
+      <div class="layui-input-block">
+        <input type="text" id="f-title" class="layui-input" required />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Assigned To (User ID)</label>
+      <div class="layui-input-block">
+        <input type="number" id="f-assignee" class="layui-input" />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Due Date</label>
+      <div class="layui-input-block">
+        <input type="datetime-local" id="f-due" class="layui-input" />
+      </div>
+    </div>
+    <div class="form-error" id="create-err"></div>
+    <div class="layui-form-item" style="text-align:right;margin-bottom:0;">
+      <button type="button" class="layui-btn layui-btn-primary" onclick="closeCreateModal()">Cancel</button>
+      <button type="submit" class="layui-btn">Add Task</button>
+    </div>
+  </form>
+</div>
+
+<script src="/vendor/layui/layui.min.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+var _layer, _form, _element;
+var _createModalIdx;
+var activeActivityId = null;
+
+layui.use(['element', 'layer', 'form', 'laypage'], function() {
+  _layer   = layui.layer;
+  _form    = layui.form;
+  _element = layui.element;
+
+  renderNav();
+  _element.render('nav', 'side-nav');
+});
+
+async function loadTasks() {
+  const id = parseInt(document.getElementById('activity-id-input').value);
+  if (!id) { toast('Enter a valid Activity ID.', 'info'); return; }
+  activeActivityId = id;
+
+  document.getElementById('tasks-table').innerHTML = 'Loading…';
+
+  const canManage = hasRole('admin', 'team_lead');
+  if (canManage) document.getElementById('btn-add-task').style.display = '';
+
+  try {
+    const res = await API.get(`/activities/${id}/tasks`);
+    const tasks = res.data || [];
+    if (!tasks.length) {
+      document.getElementById('tasks-table').innerHTML =
+        '<p style="color:var(--c-text-muted);padding:12px 0;">No tasks for this activity.</p>';
+      return;
+    }
+    document.getElementById('tasks-table').innerHTML = `
+      <table class="layui-table">
+        <thead><tr>
+          <th>Title</th><th>Status</th><th>Assigned To</th><th>Due</th>
+          ${canManage ? '<th>Actions</th>' : ''}
+        </tr></thead>
+        <tbody>${tasks.map(t => `<tr>
+          <td style="font-weight:500">${t.title}</td>
+          <td>${badge(t.status)}</td>
+          <td>${t.assigned_to || '—'}</td>
+          <td style="font-size:12px">${t.due_at ? fmt(t.due_at) : '—'}</td>
+          ${canManage ? `<td style="white-space:nowrap;">
+            ${t.status !== 'done' ? `<button class="layui-btn layui-btn-sm" onclick="advanceTask(${t.id}, '${nextStatus(t.status)}')">→ ${nextStatus(t.status).replace(/_/g,' ')}</button>` : ''}
+            <button class="layui-btn layui-btn-sm layui-btn-danger" onclick="deleteTask(${t.id})">Delete</button>
+          </td>` : ''}
+        </tr>`).join('')}</tbody>
+      </table>`;
+  } catch {
+    document.getElementById('tasks-table').innerHTML =
+      '<p style="color:var(--c-danger)">Failed to load tasks.</p>';
+  }
+}
+
+function nextStatus(status) {
+  return status === 'pending' ? 'in_progress' : 'done';
+}
+
+async function advanceTask(taskId, status) {
+  if (!activeActivityId) return;
+  try {
+    await API.put(`/activities/${activeActivityId}/tasks/${taskId}`, { status });
+    toast(`Task moved to ${status}.`, 'success');
+    loadTasks();
+  } catch (err) {
+    toast(err.data?.msg || 'Update failed.', 'error');
+  }
+}
+
+async function deleteTask(taskId) {
+  if (!activeActivityId) return;
+  try {
+    await API.delete(`/activities/${activeActivityId}/tasks/${taskId}`);
+    toast('Task deleted.', 'success');
+    loadTasks();
+  } catch (err) {
+    toast(err.data?.msg || 'Delete failed.', 'error');
+  }
+}
+
+function openCreateModal() {
+  _createModalIdx = _layer.open({
+    type: 1,
+    title: 'Add Task',
+    area: ['480px'],
+    content: document.getElementById('create-modal-body'),
+    success: function() { _form.render(); }
+  });
+}
+
+function closeCreateModal() { _layer.close(_createModalIdx); }
+
+document.getElementById('create-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!activeActivityId) return;
+  document.getElementById('create-err').textContent = '';
+  const body = {
+    title:       document.getElementById('f-title').value.trim(),
+    assigned_to: parseInt(document.getElementById('f-assignee').value) || null,
+    due_at:      document.getElementById('f-due').value || null,
+  };
+  try {
+    await API.post(`/activities/${activeActivityId}/tasks`, body);
+    toast('Task added.', 'success');
+    closeCreateModal();
+    loadTasks();
+  } catch (err) {
+    document.getElementById('create-err').textContent = err.data?.msg || 'Creation failed.';
+  }
+});
+</script>
+</body>
+</html>

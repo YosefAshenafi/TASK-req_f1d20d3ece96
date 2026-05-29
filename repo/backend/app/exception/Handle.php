@@ -51,13 +51,12 @@ class Handle extends ThinkHandle
             return json(['code' => 422, 'msg' => $e->getMessage(), 'errors' => []], 422);
         }
 
-        // Unexpected errors — log full details, never expose them
+        // Unexpected errors — log structured context; no raw source paths in production output
         Log::error('unhandled_exception', [
             'class'   => get_class($e),
             'message' => $e->getMessage(),
-            'file'    => $e->getFile(),
-            'line'    => $e->getLine(),
             'path'    => $request->pathinfo(),
+            'method'  => $request->method(),
         ]);
 
         return json(['code' => 500, 'msg' => 'Internal server error', 'errors' => []], 500);

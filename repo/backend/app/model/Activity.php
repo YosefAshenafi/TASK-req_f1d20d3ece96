@@ -42,6 +42,26 @@ class Activity extends Model
         return $val ? date('m/d/Y g:i A', strtotime($val)) : '';
     }
 
+    public function getPublishedAtAttr($val): string
+    {
+        return $val ? date('m/d/Y g:i A', strtotime($val)) : '';
+    }
+
+    public function getInProgressAtAttr($val): string
+    {
+        return $val ? date('m/d/Y g:i A', strtotime($val)) : '';
+    }
+
+    public function getCompletedAtAttr($val): string
+    {
+        return $val ? date('m/d/Y g:i A', strtotime($val)) : '';
+    }
+
+    public function getArchivedAtAttr($val): string
+    {
+        return $val ? date('m/d/Y g:i A', strtotime($val)) : '';
+    }
+
     public function scopePublished($query)
     {
         return $query->where('status', 'published');

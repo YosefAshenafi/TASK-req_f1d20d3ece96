@@ -94,11 +94,25 @@ class Violation
 
     public function attachEvidence(Request $request, int $id)
     {
+        // Authorization: admin, reviewer, the violation creator, or the violation subject
+        $violation = \app\model\Violation::find($id);
+        if (!$violation) throw new NotFoundException('Violation not found');
+
+        $role   = $request->user_role;
+        $userId = (int)$request->user_id;
+        $allowed = in_array($role, ['admin', 'reviewer'], true)
+            || $violation->created_by === $userId
+            || $violation->subject_user_id === $userId;
+
+        if (!$allowed) {
+            throw new ForbiddenException('You are not authorized to attach evidence to this violation');
+        }
+
         $file = $request->file('file');
         if (!$file) return json(['code' => 422, 'msg' => 'No file uploaded', 'errors' => []], 422);
 
         try {
-            $evidence = $this->service->attachEvidence($id, $file->getPathname(), $file->getOriginalName(), (int)$request->user_id);
+            $evidence = $this->service->attachEvidence($id, $file->getPathname(), $file->getOriginalName(), $userId);
         } catch (\app\exception\AppException $e) {
             return json(['code' => 422, 'msg' => $e->getMessage(), 'errors' => []], 422);
         }
@@ -131,6 +145,29 @@ class Violation
         return json(['code' => 200, 'msg' => 'Review submitted', 'data' => ['status' => $appeal->status]]);
     }
 
+    public function reReviewAppeal(Request $request, int $id)
+    {
+        if (!in_array($request->user_role, ['reviewer', 'admin'], true)) throw new ForbiddenException('Reviewer access required');
+
+        $data     = $request->put() ?: $request->post();
+        $decision = $data['decision'] ?? '';
+        $notes    = $data['decision_notes'] ?? '';
+
+        if (!in_array($decision, ['approved', 'rejected'], true)) return json(['code' => 422, 'msg' => 'decision must be approved or rejected', 'errors' => []], 422);
+        if (empty(trim($notes))) return json(['code' => 422, 'msg' => 'decision_notes required', 'errors' => []], 422);
+
+        try {
+            $review = $this->service->reReviewAppeal($id, $decision, $notes, (int)$request->user_id);
+        } catch (\app\exception\AppException $e) {
+            return json(['code' => 422, 'msg' => $e->getMessage(), 'errors' => []], 422);
+        }
+
+        return json(['code' => 200, 'msg' => 'Re-review submitted', 'data' => [
+            'review_id' => $review->id,
+            'decision'  => $review->decision,
+        ]]);
+    }
+
     public function userPointSummary(Request $request, int $uid)
     {
         if ($request->user_role === 'regular' && $request->user_id !== $uid) throw new ForbiddenException('Access denied');
@@ -141,6 +178,10 @@ class Violation
 
     public function groupPointSummary(Request $request, int $gid)
     {
+        // Regular users cannot query arbitrary group IDs
+        if ($request->user_role === 'regular') {
+            throw new ForbiddenException('Access denied');
+        }
         $cache  = GroupPointCache::where('group_id', $gid)->find();
         $points = $cache ? (int)$cache->total_points : 0;
         return json(['code' => 200, 'msg' => 'ok', 'data' => ['group_id' => $gid, 'total_points' => $points]]);

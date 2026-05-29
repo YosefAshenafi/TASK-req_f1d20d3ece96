@@ -4,34 +4,52 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Search — Campus Portal</title>
+  <link rel="stylesheet" href="/vendor/layui/css/layui.min.css" />
   <link rel="stylesheet" href="/css/campus.css" />
 </head>
-<body>
-<div style="display:flex;">
-  <nav id="sidebar">
-    <div id="sidebar-logo"><div class="logo-title">Campus Portal</div><div class="logo-sub">Operations &amp; Logistics</div></div>
-    <div id="sidebar-nav"></div>
-    <div id="sidebar-footer"></div>
-  </nav>
-  <div id="main">
-    <header id="topbar">
-      <span id="page-title">Search</span>
-    </header>
-    <div id="content-wrap">
+<body class="layui-layout-body">
+
+<div class="layui-layout layui-layout-admin">
+
+  <div class="layui-header">
+    <div class="layui-logo cp-logo">
+      <span class="cp-logo-title">Campus Portal</span>
+      <span class="cp-logo-sub">Operations &amp; Logistics</span>
+    </div>
+    <ul class="layui-nav layui-layout-right" id="header-right-nav"></ul>
+  </div>
+
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <ul class="layui-nav layui-nav-tree" lay-filter="side-nav" id="sidebar-nav"></ul>
+    </div>
+  </div>
+
+  <div class="layui-body">
+    <div class="cp-body-inner">
+      <div class="cp-page-bar">
+        <span class="cp-page-title" id="page-title">Search</span>
+      </div>
+
       <div class="card">
-        <div style="display:flex;gap:10px;margin-bottom:16px;">
-          <button class="btn btn-primary" id="tab-global" onclick="setTab('global')">Global Search</button>
-          <button class="btn btn-secondary" id="tab-logistics" onclick="setTab('logistics')">Logistics Search</button>
+        <!-- Tab switcher -->
+        <div class="layui-tab layui-tab-brief" lay-filter="search-tab" style="margin-bottom:0;">
+          <ul class="layui-tab-title">
+            <li class="layui-this">Global Search</li>
+            <li>Logistics Search</li>
+          </ul>
         </div>
 
-        <div class="search-bar">
-          <input type="text" id="q-input" class="form-control" placeholder="Enter search terms…" autofocus />
-          <select id="sort-select" class="form-control" style="width:150px;">
+        <!-- Query bar -->
+        <div class="search-bar" style="margin-top:16px;">
+          <input type="text" id="q-input" class="layui-input" placeholder="Enter search terms…" autofocus style="flex:1;min-width:200px;" />
+          <select id="sort-select" class="layui-select" style="width:160px;">
             <option value="relevance">Relevance</option>
             <option value="recency">Recency</option>
             <option value="popularity">Popularity</option>
+            <option value="reply_count">Reply Count</option>
           </select>
-          <button class="btn btn-primary" onclick="doSearch()">Search</button>
+          <button class="layui-btn" onclick="doSearch()">Search</button>
         </div>
       </div>
 
@@ -40,18 +58,39 @@
       </div>
     </div>
   </div>
+
 </div>
 
-<div id="toast-container"></div>
+<script src="/vendor/layui/layui.min.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/app.js"></script>
 <script>
-let activeTab = 'global';
+var _layer, _element;
+var activeTab = 'global';
 
-function setTab(tab) {
-  activeTab = tab;
-  document.getElementById('tab-global').className    = 'btn ' + (tab === 'global' ? 'btn-primary' : 'btn-secondary');
-  document.getElementById('tab-logistics').className = 'btn ' + (tab === 'logistics' ? 'btn-primary' : 'btn-secondary');
+var ALL_SORTS = ['relevance', 'recency', 'popularity', 'reply_count'];
+
+layui.use(['element', 'layer', 'form', 'laypage'], function() {
+  _layer   = layui.layer;
+  _element = layui.element;
+
+  renderNav();
+  _element.render('nav', 'side-nav');
+
+  _element.on('tab(search-tab)', function(data) {
+    activeTab = data.index === 0 ? 'global' : 'logistics';
+    rebuildSortOptions();
+    document.getElementById('search-results').innerHTML =
+      '<p style="color:var(--c-text-muted)">Enter a query above to search.</p>';
+  });
+});
+
+function rebuildSortOptions() {
+  const sel = document.getElementById('sort-select');
+  const cur = sel.value;
+  sel.innerHTML = ALL_SORTS.map(s =>
+    `<option value="${s}"${s === cur ? ' selected' : ''}>${s.replace(/_/g,' ')}</option>`
+  ).join('');
 }
 
 async function doSearch() {
@@ -65,29 +104,41 @@ async function doSearch() {
 
   document.getElementById('search-results').innerHTML = 'Searching…';
   try {
-    const res = await API.get(endpoint);
-    const hits = res.data?.hits || [];
+    const res  = await API.get(endpoint);
+    const hits = res.data?.data || [];
     if (!hits.length) {
-      document.getElementById('search-results').innerHTML = '<p style="color:var(--c-text-muted)">No results found.</p>';
+      document.getElementById('search-results').innerHTML =
+        '<p style="color:var(--c-text-muted)">No results found.</p>';
       return;
     }
-    document.getElementById('search-results').innerHTML = hits.map(h => `
-      <div style="border-bottom:1px solid var(--c-border);padding:14px 0;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <div style="font-weight:600;font-size:14px;">${h.title || h.display_name || '—'}</div>
-            <div style="font-size:12px;color:var(--c-text-muted);margin-top:3px;">${h.author_name || ''} ${h.type ? '· ' + h.type : ''}</div>
-          </div>
-          <span style="font-size:11px;color:var(--c-text-muted);">${h.score ? 'score: ' + parseFloat(h.score).toFixed(2) : ''}</span>
-        </div>
-        ${h.highlight ? `<div style="font-size:13px;margin-top:8px;line-height:1.5;">${h.highlight}</div>` : ''}
-      </div>`).join('');
+    document.getElementById('search-results').innerHTML = `
+      <table class="layui-table">
+        <thead><tr>
+          <th>Title / Name</th><th>Type</th><th>Author</th><th>Score</th>
+        </tr></thead>
+        <tbody>${hits.map(h => {
+          const hlTitle = h.highlight?.title || h.title || h.display_name || '—';
+          const hlBody  = h.highlight?.body  || '';
+          return `<tr>
+            <td>
+              <div style="font-weight:500;">${hlTitle}</div>
+              ${hlBody ? `<div style="font-size:12px;color:var(--c-text-muted);margin-top:3px;">${hlBody}</div>` : ''}
+            </td>
+            <td>${h.entity_type ? badge(h.entity_type) : '—'}</td>
+            <td style="font-size:12px">${h.author_name || '—'}</td>
+            <td style="font-size:12px">${h.relevance_score ? parseFloat(h.relevance_score).toFixed(2) : '—'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`;
   } catch (err) {
-    document.getElementById('search-results').innerHTML = `<p style="color:var(--c-danger)">${err.data?.msg || 'Search failed.'}</p>`;
+    document.getElementById('search-results').innerHTML =
+      `<p style="color:var(--c-danger)">${err.data?.msg || 'Search failed.'}</p>`;
   }
 }
 
-document.getElementById('q-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+document.getElementById('q-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
 </script>
 </body>
 </html>

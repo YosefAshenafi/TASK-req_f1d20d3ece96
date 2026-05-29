@@ -6,6 +6,7 @@ use app\model\Violation;
 use app\model\ViolationRule;
 use app\model\ViolationEvidence;
 use app\model\ViolationAppeal;
+use app\model\ViolationAppealReview;
 use app\model\UserPointCache;
 use app\model\GroupPointCache;
 use app\model\Notification;
@@ -182,6 +183,39 @@ class ViolationService
         }
 
         return ViolationAppeal::find($appeal->id);
+    }
+
+    public function reReviewAppeal(int $violationId, string $decision, string $notes, int $reviewerId): ViolationAppealReview
+    {
+        $appeal = ViolationAppeal::where('violation_id', $violationId)->find();
+        if (!$appeal) throw new NotFoundException('Appeal not found');
+        if ($appeal->status !== 'reviewed') {
+            throw new AppException('Appeal has not been initially reviewed; use the initial review endpoint');
+        }
+        if (empty(trim($notes))) throw new AppException('Decision notes are required');
+
+        $review = ViolationAppealReview::create([
+            'appeal_id'      => $appeal->id,
+            'reviewer_id'    => $reviewerId,
+            'decision'       => $decision,
+            'decision_notes' => $notes,
+        ]);
+
+        $newStatus = ($decision === 'approved') ? 'reversed' : 'upheld';
+        Violation::where('id', $violationId)->update(['status' => $newStatus]);
+
+        if ($decision === 'approved') {
+            $violation = Violation::find($violationId);
+            $this->updatePointCache((int)$violation->subject_user_id, $violation->group_id, -(int)$violation->points_applied);
+        }
+
+        Log::info('appeal_re_reviewed', [
+            'violation_id' => $violationId,
+            'decision'     => $decision,
+            'reviewer'     => $reviewerId,
+        ]);
+
+        return $review;
     }
 
     private function notifyAdmins(string $message, string $type, string $entityType, int $entityId): void

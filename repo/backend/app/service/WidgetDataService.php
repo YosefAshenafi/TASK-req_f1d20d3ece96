@@ -81,15 +81,48 @@ class WidgetDataService
         ];
     }
 
-    /** Dispatch data for a named widget type. */
+    /** Dispatch data for a named widget type. Optionally includes drill-down records. */
     public static function getWidgetData(string $widgetType, array $filters = []): array
     {
-        return match ($widgetType) {
-            'activity_status'      => self::activityStatusCounts(),
-            'order_pipeline'       => self::orderPipeline(),
-            'violation_leaderboard'=> self::violationLeaderboard(),
-            'fulfillment_rate'     => self::fulfillmentRate(),
-            default                => throw new \InvalidArgumentException("Unknown widget type: {$widgetType}"),
+        $base = match ($widgetType) {
+            'activity_status'       => self::activityStatusCounts(),
+            'order_pipeline'        => self::orderPipeline(),
+            'violation_leaderboard' => self::violationLeaderboard(),
+            'fulfillment_rate'      => self::fulfillmentRate(),
+            default                 => throw new \InvalidArgumentException("Unknown widget type: {$widgetType}"),
         };
+
+        if (!empty($filters['drill_status'])) {
+            $base['drill'] = self::drillRecords($widgetType, $filters['drill_status']);
+        }
+
+        return $base;
+    }
+
+    /**
+     * Returns detailed records for a given widget type and status.
+     * Used for drill-down interactions from widget summary rows.
+     */
+    private static function drillRecords(string $widgetType, string $status): array
+    {
+        if ($widgetType === 'activity_status') {
+            return Db::table('activities')
+                ->field('id, title, status, created_at')
+                ->where('status', $status)
+                ->order('created_at', 'desc')
+                ->limit(20)
+                ->select()
+                ->toArray();
+        }
+        if ($widgetType === 'order_pipeline') {
+            return Db::table('orders')
+                ->field('id, type, status, created_at')
+                ->where('status', $status)
+                ->order('created_at', 'desc')
+                ->limit(20)
+                ->select()
+                ->toArray();
+        }
+        return [];
     }
 }

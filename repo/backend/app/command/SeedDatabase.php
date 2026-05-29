@@ -26,18 +26,24 @@ class SeedDatabase extends Command
         ];
 
         foreach ($seeds as $seed) {
+            $hash   = password_hash($seed['password'], PASSWORD_BCRYPT, ['cost' => 12]);
             $exists = Db::table('users')->where('username', $seed['username'])->count();
             if (!$exists) {
                 Db::table('users')->insert([
                     'username'      => $seed['username'],
-                    'password_hash' => password_hash($seed['password'], PASSWORD_BCRYPT, ['cost' => 12]),
+                    'password_hash' => $hash,
                     'role'          => $seed['role'],
                     'created_at'    => date('Y-m-d H:i:s'),
                     'updated_at'    => date('Y-m-d H:i:s'),
                 ]);
                 $output->writeln("Seeded: {$seed['username']} ({$seed['role']})");
             } else {
-                $output->writeln("Skipped (exists): {$seed['username']}");
+                // Always refresh the password hash so README credentials are authoritative
+                Db::table('users')->where('username', $seed['username'])->update([
+                    'password_hash' => $hash,
+                    'updated_at'    => date('Y-m-d H:i:s'),
+                ]);
+                $output->writeln("Updated password: {$seed['username']}");
             }
         }
 

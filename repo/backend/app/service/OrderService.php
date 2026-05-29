@@ -5,6 +5,7 @@ namespace app\service;
 use app\model\Order;
 use app\model\OrderRefund;
 use app\model\InvoiceCorrection;
+use app\service\EncryptionService;
 use app\exception\OrderStateException;
 use app\exception\ForbiddenException;
 use app\exception\NotFoundException;
@@ -115,16 +116,27 @@ class OrderService
             throw new OrderStateException('Invoice corrections are only allowed on closed orders');
         }
 
-        $allowedFields = ['invoice_address', 'invoice_contact'];
-        $filtered      = array_intersect_key($patch, array_flip($allowedFields));
-        if (empty($filtered)) {
-            throw new \app\exception\AppException('No correctable fields provided');
+        // Closed-order corrections are scoped to invoice_address only.
+        if (array_key_exists('invoice_contact', $patch)) {
+            throw new \app\exception\AppException(
+                'invoice_contact cannot be corrected on closed orders; only invoice_address corrections are accepted'
+            );
         }
+
+        $filtered = array_intersect_key($patch, array_flip(['invoice_address']));
+        if (empty($filtered)) {
+            throw new \app\exception\AppException(
+                'No correctable fields provided; submit invoice_address to request a correction'
+            );
+        }
+
+        $encPatch = ['invoice_address_enc' => EncryptionService::encrypt((string)$filtered['invoice_address'])];
 
         return InvoiceCorrection::create([
             'order_id'     => $orderId,
             'requested_by' => $userId,
-            'field_patch'  => $filtered,
+            'field_patch'  => $encPatch,
+            'scope'        => 'invoice_address',
         ]);
     }
 
@@ -148,8 +160,21 @@ class OrderService
         ]);
 
         if ($decision === 'approved') {
-            $patch = json_decode($correction->field_patch, true) ?? [];
-            Order::where('id', $correction->order_id)->update($patch);
+            $patch   = json_decode($correction->field_patch, true) ?? [];
+            $dbPatch = [];
+            foreach ($patch as $field => $value) {
+                if ($field === 'invoice_address_enc') {
+                    // Already-encrypted address — apply directly
+                    $dbPatch['invoice_address_enc'] = $value;
+                } elseif ($field === 'invoice_address') {
+                    // Legacy plaintext format
+                    $dbPatch['invoice_address_enc'] = EncryptionService::encrypt((string)$value);
+                }
+                // invoice_contact fields are excluded — corrections only apply to invoice_address
+            }
+            if (!empty($dbPatch)) {
+                Order::where('id', $correction->order_id)->update($dbPatch);
+            }
         }
 
         return InvoiceCorrection::find($correctionId);

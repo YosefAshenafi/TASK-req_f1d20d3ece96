@@ -113,11 +113,13 @@ class FulfillmentService
     private function maybeCreateArrivalReminder(int $shipmentId, string $eventType, int $orderId): void
     {
         if ($eventType !== 'delivered') return;
-        // Notifications for arrival reminders are created in the notification table
-        // (handled by ViolationService::createNotification equivalent — kept simple here)
         try {
+            // Resolve the order creator so recipient_id satisfies the FK constraint
+            $order = \think\facade\Db::table('orders')->where('id', $orderId)->field('created_by')->find();
+            if (!$order || empty($order['created_by'])) return;
+
             \think\facade\Db::table('notifications')->insert([
-                'recipient_id' => 0, // 0 = broadcast to order creator — resolved at display time
+                'recipient_id' => (int)$order['created_by'],
                 'type'         => 'arrival_reminder',
                 'message'      => "Shipment #{$shipmentId} has been delivered",
                 'entity_type'  => 'shipment',

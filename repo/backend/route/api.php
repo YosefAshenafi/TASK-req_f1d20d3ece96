@@ -24,12 +24,14 @@ Route::group('api', function () {
     Route::group('activities', function () {
         Route::get('', 'Activity/index');
         Route::post('', 'Activity/create');
-        Route::get(':id', 'Activity/show');
+        Route::get(':id', 'Activity/show')->middleware(\app\middleware\BehaviorCapture::class);
         Route::put(':id', 'Activity/update');
         Route::patch(':id/state', 'Activity/transition');
         Route::get(':id/versions', 'Activity/versions');
         Route::post(':id/signups', 'Activity/signup');
         Route::delete(':id/signups/:uid', 'Activity/cancelSignup');
+        Route::post(':id/saves', 'Activity/save');
+        Route::delete(':id/saves', 'Activity/unsave');
         Route::get(':id/tasks', 'Task/index');
         Route::post(':id/tasks', 'Task/store');
         Route::put(':id/tasks/:tid', 'Task/update');
@@ -76,6 +78,7 @@ Route::group('api', function () {
         Route::post(':id/evidence', 'Violation/attachEvidence');
         Route::post(':id/appeals', 'Violation/appeal');
         Route::patch(':id/appeals/review', 'Violation/reviewAppeal');
+        Route::patch(':id/appeals/re-review', 'Violation/reReviewAppeal');
     });
 
     Route::get('point-summary/users/:uid', 'Violation/userPointSummary');
@@ -88,6 +91,7 @@ Route::group('api', function () {
     // Recommendations
     Route::get('recommendations', 'Recommendation/listRecommendations');
     Route::get('recommendations/activities/:id', 'Recommendation/activityDetailRecommendations');
+    Route::get('recommendations/orders/:id', 'Recommendation/orderDetailRecommendations');
 
     // Dashboards
     Route::group('dashboards', function () {

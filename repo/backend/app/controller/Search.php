@@ -46,9 +46,9 @@ class Search
             return json(['code' => 422, 'msg' => 'Search query must be at least 2 characters', 'errors' => ['q' => 'too short']], 422);
         }
 
-        $validSorts = ['recency', 'relevance'];
+        $validSorts = ['recency', 'relevance', 'popularity', 'reply_count'];
         if (!in_array($sort, $validSorts, true)) {
-            return json(['code' => 422, 'msg' => 'Invalid sort value', 'errors' => ['sort' => 'invalid']], 422);
+            return json(['code' => 422, 'msg' => 'Invalid sort value', 'errors' => ['sort' => 'must be one of: ' . implode(', ', $validSorts)]], 422);
         }
 
         $usePinyin   = filter_var($request->get('use_pinyin', 'false'), FILTER_VALIDATE_BOOLEAN);
@@ -58,7 +58,7 @@ class Search
         $page    = max(1, (int)$request->get('page', 1));
         $perPage = min(50, (int)$request->get('per_page', 20));
 
-        $results = $this->service->logisticsSearch($q, $filters, $sort, $page, $perPage, $usePinyin, $useSynonyms);
+        $results = $this->service->logisticsSearch($q, $filters, $sort, $page, $perPage, $usePinyin, $useSynonyms, (int)$request->user_id, (string)$request->user_role);
         return json(['code' => 200, 'msg' => 'ok', 'data' => $results]);
     }
 }

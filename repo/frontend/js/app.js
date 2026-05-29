@@ -1,14 +1,14 @@
 /**
  * Campus Portal — App shell: auth guard, routing, toast, nav rendering.
+ * Uses Layui 2.x for layer (toasts/modals), element (nav), laypage (pagination).
  */
 
 /* ── Toast ──────────────────────────────────────────────── */
 function toast(msg, type = 'info') {
-  const el = document.createElement('div');
-  el.className = `toast toast-${type}`;
-  el.textContent = msg;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(() => el.remove(), 3800);
+  const iconMap = { success: 1, error: 2, info: 0, warn: 3 };
+  if (typeof layui !== 'undefined') {
+    layui.layer.msg(msg, { icon: iconMap[type] ?? 0, time: 3000 });
+  }
 }
 
 /* ── Session helpers ─────────────────────────────────────── */
@@ -43,51 +43,53 @@ function badge(status) {
 function fmt(dtStr) {
   if (!dtStr) return '—';
   const d = new Date(dtStr);
-  return d.toLocaleDateString('en-US') + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  if (isNaN(d.getTime())) return '—';
+  const mm     = String(d.getMonth() + 1).padStart(2, '0');
+  const dd     = String(d.getDate()).padStart(2, '0');
+  const yyyy   = d.getFullYear();
+  const h      = d.getHours();
+  const min    = String(d.getMinutes()).padStart(2, '0');
+  const hour12 = h % 12 || 12;
+  const ampm   = h < 12 ? 'AM' : 'PM';
+  return `${mm}/${dd}/${yyyy} ${hour12}:${min} ${ampm}`;
 }
 
 /* ── Sidebar navigation ──────────────────────────────────── */
 const NAV_ITEMS = [
-  { label: 'Dashboard',    icon: '&#9783;', href: '/index.html',              roles: ['admin','ops_staff','team_lead','reviewer','regular'] },
-  { label: 'Activities',   icon: '&#9873;', href: '/pages/activities.html',   roles: ['admin','ops_staff','team_lead','reviewer','regular'] },
-  { label: 'Orders',       icon: '&#9889;', href: '/pages/orders.html',       roles: ['admin','ops_staff'] },
-  { label: 'Shipments',    icon: '&#9992;', href: '/pages/shipments.html',    roles: ['admin','ops_staff'] },
-  { label: 'Tasks',        icon: '&#9745;', href: '/pages/tasks.html',        roles: ['admin','team_lead'] },
-  { label: 'Violations',   icon: '&#9888;', href: '/pages/violations.html',   roles: ['admin','ops_staff','team_lead','reviewer','regular'] },
-  { label: 'Search',       icon: '&#9906;', href: '/pages/search.html',       roles: ['admin','ops_staff','team_lead','reviewer','regular'] },
-  { label: 'My Dashboards',icon: '&#9781;', href: '/pages/dashboards.html',   roles: ['admin'] },
-  { label: 'Users',        icon: '&#9786;', href: '/pages/users.html',        roles: ['admin'] },
+  { label: 'Dashboard',     href: '/index.html',              roles: ['admin','ops_staff','team_lead','reviewer','regular'] },
+  { label: 'Activities',    href: '/pages/activities.html',   roles: ['admin','ops_staff','team_lead','reviewer','regular'] },
+  { label: 'Orders',        href: '/pages/orders.html',       roles: ['admin','ops_staff'] },
+  { label: 'Shipments',     href: '/pages/shipments.html',    roles: ['admin','ops_staff'] },
+  { label: 'Tasks',         href: '/pages/tasks.html',        roles: ['admin','team_lead'] },
+  { label: 'Violations',    href: '/pages/violations.html',   roles: ['admin','ops_staff','team_lead','reviewer','regular'] },
+  { label: 'Search',        href: '/pages/search.html',       roles: ['admin','ops_staff','team_lead','reviewer','regular'] },
+  { label: 'My Dashboards', href: '/pages/dashboards.html',   roles: ['admin','ops_staff','team_lead','reviewer'] },
+  { label: 'Users',         href: '/pages/users.html',        roles: ['admin'] },
 ];
 
 function renderNav() {
   const s = getSession();
   if (!s) return;
+  const current = window.location.pathname;
 
   const nav = document.getElementById('sidebar-nav');
-  if (!nav) return;
+  if (nav) {
+    nav.innerHTML = NAV_ITEMS.filter(i => i.roles.includes(s.role)).map(item =>
+      `<li class="layui-nav-item${current === item.href ? ' layui-this' : ''}">
+         <a href="${item.href}">${item.label}</a>
+       </li>`
+    ).join('');
+  }
 
-  nav.innerHTML = NAV_ITEMS
-    .filter(item => item.roles.includes(s.role))
-    .map(item => {
-      const active = window.location.pathname === item.href ? ' active' : '';
-      return `<a class="nav-item${active}" href="${item.href}">
-        <span class="nav-icon">${item.icon}</span>${item.label}
-      </a>`;
-    }).join('');
-
-  const footer = document.getElementById('sidebar-footer');
-  if (footer) {
-    footer.innerHTML = `
-      <div class="sidebar-user-info">
-        <strong>${s.username}</strong>${ROLE_LABELS[s.role] || s.role}
-      </div>
-      <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>`;
+  const headerRight = document.getElementById('header-right-nav');
+  if (headerRight) {
+    headerRight.innerHTML = `<li class="layui-nav-item"><a href="javascript:;">${s.username} &nbsp;<span style="font-size:11px;opacity:.7">${ROLE_LABELS[s.role] || s.role}</span></a><dl class="layui-nav-child"><dd><a href="javascript:void(0)" onclick="logout()">Sign Out</a></dd></dl></li>`;
   }
 
   const titleEl = document.getElementById('page-title');
   if (titleEl) {
-    const current = NAV_ITEMS.find(i => i.href === window.location.pathname);
-    if (current) titleEl.textContent = current.label;
+    const found = NAV_ITEMS.find(i => i.href === current);
+    if (found) titleEl.textContent = found.label;
   }
 }
 
@@ -97,31 +99,30 @@ async function logout() {
   window.location.href = '/pages/login.html';
 }
 
-/* ── Pagination helper ───────────────────────────────────── */
-function renderPagination(containerId, currentPage, totalPages, onPageChange) {
+/* ── Pagination helper using layui.laypage ───────────────── */
+function renderPagination(containerId, currentPage, totalPages, onPageFn) {
   const el = document.getElementById(containerId);
   if (!el || totalPages <= 1) { if (el) el.innerHTML = ''; return; }
-
-  let html = '<div class="pagination">';
-  if (currentPage > 1) html += `<button class="page-btn" onclick="(${onPageChange})(${currentPage - 1})">&#8249;</button>`;
-  for (let p = Math.max(1, currentPage - 2); p <= Math.min(totalPages, currentPage + 2); p++) {
-    html += `<button class="page-btn${p === currentPage ? ' active' : ''}" onclick="(${onPageChange})(${p})">${p}</button>`;
-  }
-  if (currentPage < totalPages) html += `<button class="page-btn" onclick="(${onPageChange})(${currentPage + 1})">&#8250;</button>`;
-  html += '</div>';
-  el.innerHTML = html;
+  layui.laypage.render({
+    elem: containerId,
+    count: totalPages * 20,
+    limit: 20,
+    curr: currentPage,
+    theme: '#3D405B',
+    jump: function(obj, first) {
+      if (!first) window[onPageFn](obj.curr);
+    }
+  });
 }
 
 /* ── Init on every page ──────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
   const isLoginPage = window.location.pathname.includes('login');
   if (!isLoginPage && !requireAuth()) return;
-  if (!isLoginPage) renderNav();
-
-  // Ensure toast container exists
-  if (!document.getElementById('toast-container')) {
-    const tc = document.createElement('div');
-    tc.id = 'toast-container';
-    document.body.appendChild(tc);
-  }
+  layui.use(['element', 'layer', 'form'], function() {
+    if (!isLoginPage) {
+      renderNav();
+      layui.element.render('nav', 'side-nav');
+    }
+  });
 });

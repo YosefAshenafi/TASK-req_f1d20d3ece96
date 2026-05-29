@@ -1,147 +1,255 @@
-# Test Coverage & README Audit Report — Campus Portal
+# Test Coverage Audit
 
-**Date:** 2026-05-22  
-**Project type:** fullstack (ThinkPHP + Layui + MySQL)
+## Project Type Detection
+- README top does not declare one of `backend|fullstack|web|android|ios|desktop` as a type token.
+- Inferred type: **fullstack** (ThinkPHP backend routes + static frontend).
+- Evidence: `repo/README.md:1`, `repo/backend/route/api.php:1-112`, `repo/frontend/index.html:1`
+
+## Backend Endpoint Inventory
+Resolved from `repo/backend/route/api.php` including `Route::group('api', ...)` prefix.
+
+1. POST `/api/auth/login`
+2. POST `/api/auth/logout`
+3. GET `/api/users`
+4. POST `/api/users`
+5. GET `/api/users/:id`
+6. PUT `/api/users/:id`
+7. DELETE `/api/users/:id`
+8. GET `/api/activities`
+9. POST `/api/activities`
+10. GET `/api/activities/:id`
+11. PUT `/api/activities/:id`
+12. PATCH `/api/activities/:id/state`
+13. GET `/api/activities/:id/versions`
+14. POST `/api/activities/:id/signups`
+15. DELETE `/api/activities/:id/signups/:uid`
+16. POST `/api/activities/:id/saves`
+17. DELETE `/api/activities/:id/saves`
+18. GET `/api/activities/:id/tasks`
+19. POST `/api/activities/:id/tasks`
+20. PUT `/api/activities/:id/tasks/:tid`
+21. DELETE `/api/activities/:id/tasks/:tid`
+22. GET `/api/orders`
+23. POST `/api/orders`
+24. GET `/api/orders/:id`
+25. PATCH `/api/orders/:id/state`
+26. POST `/api/orders/:id/refund`
+27. POST `/api/orders/:id/invoice-corrections`
+28. PATCH `/api/invoice-corrections/:id/review`
+29. GET `/api/shipments`
+30. POST `/api/shipments`
+31. GET `/api/shipments/:id`
+32. POST `/api/shipments/:id/events`
+33. PATCH `/api/shipments/:id/deliver`
+34. POST `/api/shipments/:id/exceptions`
+35. GET `/api/subscriptions`
+36. PUT `/api/subscriptions`
+37. GET `/api/violation-rules`
+38. POST `/api/violation-rules`
+39. PUT `/api/violation-rules/:id`
+40. DELETE `/api/violation-rules/:id`
+41. GET `/api/violations`
+42. POST `/api/violations`
+43. GET `/api/violations/:id`
+44. POST `/api/violations/:id/evidence`
+45. POST `/api/violations/:id/appeals`
+46. PATCH `/api/violations/:id/appeals/review`
+47. GET `/api/point-summary/users/:uid`
+48. GET `/api/point-summary/groups/:gid`
+49. GET `/api/search`
+50. GET `/api/search/logistics`
+51. GET `/api/recommendations`
+52. GET `/api/recommendations/activities/:id`
+53. GET `/api/recommendations/orders/:id`
+54. GET `/api/dashboards`
+55. POST `/api/dashboards`
+56. GET `/api/dashboards/:id`
+57. PUT `/api/dashboards/:id`
+58. DELETE `/api/dashboards/:id`
+59. POST `/api/dashboards/:id/favorite`
+60. DELETE `/api/dashboards/:id/favorite`
+61. POST `/api/dashboards/:id/export`
+62. GET `/api/widgets/data`
+63. GET `/api/users/:id/sensitive`
+
+Evidence: `repo/backend/route/api.php:7-110`
+
+## API Test Mapping Table
+Legend: `TNH` = true no-mock HTTP.
+
+| Endpoint | Covered | Type | Test files | Evidence |
+|---|---|---|---|---|
+| `POST /api/auth/login` | yes | TNH | `AuthTest.php` | `repo/tests/api/AuthTest.php:15-31` |
+| `POST /api/auth/logout` | yes | TNH | `AuthTest.php` | `repo/tests/api/AuthTest.php:82-99` |
+| `GET /api/users` | yes | TNH | `UserTest.php` | `repo/tests/api/UserTest.php:14-44` |
+| `POST /api/users` | yes | TNH | `UserTest.php` | `repo/tests/api/UserTest.php:82-126` |
+| `GET /api/users/:id` | yes | TNH | `UserTest.php` | `repo/tests/api/UserTest.php:46-80` |
+| `PUT /api/users/:id` | **no** | — | — | No `PUT /api/users/{id}` call found in `repo/tests/api/UserTest.php` |
+| `DELETE /api/users/:id` | yes | TNH | `UserTest.php` | `repo/tests/api/UserTest.php:128-141` |
+| `GET /api/activities` | yes | TNH | `ActivityTest.php` | `repo/tests/api/ActivityTest.php:14-31` |
+| `POST /api/activities` | yes | TNH | `ActivityTest.php`,`SearchTest.php` | `repo/tests/api/ActivityTest.php:33-69` |
+| `GET /api/activities/:id` | yes | TNH | `ActivityTest.php` | `repo/tests/api/ActivityTest.php:71-91` |
+| `PUT /api/activities/:id` | yes | TNH | `ActivityTest.php` | `repo/tests/api/ActivityTest.php:169-236` |
+| `PATCH /api/activities/:id/state` | yes | TNH | `ActivityTest.php` | `repo/tests/api/ActivityTest.php:93-131` |
+| `GET /api/activities/:id/versions` | yes | TNH | `ActivityTest.php` | `repo/tests/api/ActivityTest.php:133-167` |
+| `POST /api/activities/:id/signups` | yes | TNH | `ActivityTest.php` | `repo/tests/api/ActivityTest.php:238-302` |
+| `DELETE /api/activities/:id/signups/:uid` | yes | TNH | `ActivityTest.php` | `repo/tests/api/ActivityTest.php:550-590` |
+| `POST /api/activities/:id/saves` | yes | TNH | `ActivityTest.php` | `repo/tests/api/ActivityTest.php:304-347` |
+| `DELETE /api/activities/:id/saves` | yes | TNH | `ActivityTest.php` | `repo/tests/api/ActivityTest.php:349-388` |
+| `GET /api/activities/:id/tasks` | yes | TNH | `TaskTest.php` | `repo/tests/api/TaskTest.php:81-84` |
+| `POST /api/activities/:id/tasks` | yes | TNH | `TaskTest.php` | `repo/tests/api/TaskTest.php:18-48` |
+| `PUT /api/activities/:id/tasks/:tid` | yes | TNH | `TaskTest.php` | `repo/tests/api/TaskTest.php:50-63` |
+| `DELETE /api/activities/:id/tasks/:tid` | yes | TNH | `TaskTest.php` | `repo/tests/api/TaskTest.php:66-78` |
+| `GET /api/orders` | yes | TNH | `OrderTest.php` | `repo/tests/api/OrderTest.php:12-37` |
+| `POST /api/orders` | yes | TNH | `OrderTest.php` | `repo/tests/api/OrderTest.php:39-89` |
+| `GET /api/orders/:id` | yes | TNH | `OrderTest.php` | `repo/tests/api/OrderTest.php:91-120` |
+| `PATCH /api/orders/:id/state` | yes | TNH | `OrderTest.php` | `repo/tests/api/OrderTest.php:122-171` |
+| `POST /api/orders/:id/refund` | yes | TNH | `OrderTest.php` | `repo/tests/api/OrderTest.php:173-225` |
+| `POST /api/orders/:id/invoice-corrections` | yes | TNH | `OrderTest.php` | `repo/tests/api/OrderTest.php:227-273` |
+| `PATCH /api/invoice-corrections/:id/review` | yes | TNH | `OrderTest.php` | `repo/tests/api/OrderTest.php:275-335` |
+| `GET /api/shipments` | yes | TNH | `FulfillmentTest.php` | `repo/tests/api/FulfillmentTest.php:129-145` |
+| `POST /api/shipments` | yes | TNH | `FulfillmentTest.php` | `repo/tests/api/FulfillmentTest.php:31-37` |
+| `GET /api/shipments/:id` | yes | TNH | `FulfillmentTest.php` | `repo/tests/api/FulfillmentTest.php:147-167` |
+| `POST /api/shipments/:id/events` | yes | TNH | `FulfillmentTest.php` | `repo/tests/api/FulfillmentTest.php:38-46` |
+| `PATCH /api/shipments/:id/deliver` | yes | TNH | `FulfillmentTest.php` | `repo/tests/api/FulfillmentTest.php:48-57` |
+| `POST /api/shipments/:id/exceptions` | yes | TNH | `FulfillmentTest.php` | `repo/tests/api/FulfillmentTest.php:109-117` |
+| `GET /api/subscriptions` | yes | TNH | `FulfillmentTest.php` | `repo/tests/api/FulfillmentTest.php:59-67` |
+| `PUT /api/subscriptions` | yes | TNH | `FulfillmentTest.php` | `repo/tests/api/FulfillmentTest.php:69-81` |
+| `GET /api/violation-rules` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:250-267` |
+| `POST /api/violation-rules` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:23-39` |
+| `PUT /api/violation-rules/:id` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:270-291` |
+| `DELETE /api/violation-rules/:id` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:295-317` |
+| `GET /api/violations` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:57-68` |
+| `POST /api/violations` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:41-55` |
+| `GET /api/violations/:id` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:320-336` |
+| `POST /api/violations/:id/evidence` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:202-239` |
+| `POST /api/violations/:id/appeals` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:70-88` |
+| `PATCH /api/violations/:id/appeals/review` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:90-121` |
+| `GET /api/point-summary/users/:uid` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:123-133` |
+| `GET /api/point-summary/groups/:gid` | yes | TNH | `ViolationTest.php` | `repo/tests/api/ViolationTest.php:164-169` |
+| `GET /api/search` | yes | TNH | `SearchTest.php` | `repo/tests/api/SearchTest.php:26-75` |
+| `GET /api/search/logistics` | yes | TNH | `SearchTest.php` | `repo/tests/api/SearchTest.php:76-598` |
+| `GET /api/recommendations` | yes | TNH | `RecommendationTest.php` | `repo/tests/api/RecommendationTest.php:23-290` |
+| `GET /api/recommendations/activities/:id` | yes | TNH | `RecommendationTest.php` | `repo/tests/api/RecommendationTest.php:55-68` |
+| `GET /api/recommendations/orders/:id` | yes | TNH | `RecommendationTest.php` | `repo/tests/api/RecommendationTest.php:291-367` |
+| `GET /api/dashboards` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:55-70` |
+| `POST /api/dashboards` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:25-54` |
+| `GET /api/dashboards/:id` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:88-108` |
+| `PUT /api/dashboards/:id` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:71-87` |
+| `DELETE /api/dashboards/:id` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:88-100` |
+| `POST /api/dashboards/:id/favorite` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:111-126` |
+| `DELETE /api/dashboards/:id/favorite` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:127-148` |
+| `POST /api/dashboards/:id/export` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:173-207` |
+| `GET /api/widgets/data` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:150-172` |
+| `GET /api/users/:id/sensitive` | yes | TNH | `DashboardTest.php` | `repo/tests/api/DashboardTest.php:209-229` |
+
+## API Test Classification
+1. **True No-Mock HTTP**: Present (all API tests use real HTTP requests via `GuzzleHttp\Client` to `BASE_URL`).
+   - Evidence: `repo/tests/TestCase.php:13-21`, `repo/tests/TestCase.php:33-41`
+2. **HTTP with mocking**: Not found.
+3. **Non-HTTP tests**: Present (frontend JS unit scripts executed with Node assert).
+   - Evidence: `repo/tests/frontend/test-fmt.js:1-58`, `repo/tests/frontend/test-tags.js:1-74`, `repo/tests/frontend/test-render.js:1-136`
+
+## Mock Detection
+- No `jest.mock`, `vi.mock`, `sinon.stub`, `Mockery`, or transport/controller/service stubbing found in test suite.
+- Evidence: repository grep over `repo/tests` returned no matches.
+
+## Coverage Summary
+- Total endpoints: **63**
+- Endpoints with HTTP tests: **62**
+- Endpoints with true no-mock HTTP tests: **62**
+- HTTP coverage: **98.41%**
+- True API coverage: **98.41%**
+- Uncovered endpoint: `PUT /api/users/:id`
+  - Evidence: route exists `repo/backend/route/api.php:19`; no corresponding PUT invocation in `repo/tests/api/UserTest.php`
+
+## Unit Test Summary
+### Backend Unit Tests
+- Direct unit tests for controllers/services/repositories/middleware: **not present** (backend tests are API HTTP tests).
+- API HTTP coverage is strong for core controller paths.
+- Important backend module not directly unit tested: `User/update` path.
+
+### Frontend Unit Tests (Strict Requirement)
+- Frontend test files exist: `repo/tests/frontend/test-fmt.js`, `repo/tests/frontend/test-tags.js`, `repo/tests/frontend/test-render.js`
+- Framework/tool: Node built-in `assert` (no Jest/Vitest/RTL).
+- Covered logic (mirrored inline): `fmt`, `normalizeActivityTags`, `normalizeActivitySupplies`, `parseTagInput`, `fmtDatetimeLocal`.
+- Critical strict gap: tests **do not import/render actual frontend modules/components**; functions are redefined inline.
+  - Evidence: `repo/tests/frontend/test-fmt.js:9-22`, `repo/tests/frontend/test-tags.js:9-16`, `repo/tests/frontend/test-render.js:12-26`
+- **Frontend unit tests: MISSING** (under this prompt’s strict detection rule).
+
+### Cross-Layer Observation
+- Backend API testing is extensive, but frontend tests are implementation-mirror scripts rather than module-import tests; this leaves FE integration regressions undetected.
+
+## API Observability Check
+- Strong: tests usually specify endpoint, request payload/query, and status/body assertions.
+  - Evidence examples: `repo/tests/api/OrderTest.php:227-335`, `repo/tests/api/SearchTest.php:239-271`, `repo/tests/api/FulfillmentTest.php:147-159`
+
+## Tests Check
+- Success/failure/validation/authz paths are broadly present in API tests.
+- `run_tests.sh` is Docker-based; does not require local package installation.
+  - Evidence: `repo/run_tests.sh:21-53`
+- Fullstack FE↔BE E2E scenarios are not explicitly present as browser-flow tests; partial compensation exists via high API coverage.
+
+## Test Coverage Score (0–100)
+- **84/100**
+
+## Score Rationale
+- + Very high HTTP endpoint coverage and true no-mock API testing.
+- - One uncovered backend endpoint (`PUT /api/users/:id`).
+- - Strict frontend unit-test rule not met (tests mirror code instead of importing real FE modules).
+- - No explicit FE↔BE E2E flow tests.
+
+## Key Gaps
+1. Missing API coverage for `PUT /api/users/:id`.
+2. Frontend tests are not bound to real frontend modules/components under strict rule.
+
+## Confidence & Assumptions
+- Confidence: medium-high.
+- Static-only limitation: no runtime execution performed.
+- Coverage conclusion is based on route + test source inspection only.
 
 ---
 
-## 1. Test Classification
+# README Audit
 
-**Classification: True No-Mock HTTP**
+## README Location
+- Found: `repo/README.md`
 
-All 87 tests in `repo/tests/api/` send real HTTP requests via `GuzzleHttp\Client` to the running ThinkPHP application served through nginx. No controllers, services, repositories, middleware, or in-process dependencies are mocked or stubbed.
+## Hard Gate Evaluation
+- Formatting: **PASS** (`repo/README.md:1-260`)
+- Startup instructions (backend/fullstack): **PASS** (`docker compose up ...` and literal `docker-compose up ...` present)
+  - Evidence: `repo/README.md:22`, `repo/README.md:28`
+- Access method (URL + port): **PASS**
+  - Evidence: `repo/README.md:31`
+- Verification method: **PASS** (curl + browser flow with expected outcomes)
+  - Evidence: `repo/README.md:48-77`
+- Environment rules (no runtime installs/manual DB setup): **PASS**
+  - Evidence: `repo/README.md:13-15`, `repo/README.md:79-93`
+- Demo credentials with roles (auth exists): **PASS**
+  - Evidence: `repo/README.md:39-46`
 
-Forbidden patterns confirmed absent:
-- No `$this->createMock()` or `$this->getMockBuilder()` calls
-- No `Mockery::mock()` references
-- No `Response::fake()` or any framework-level fake
-- No `Http::fake()` or `Bus::fake()` calls
-- No in-process `Application::instance()` bootstrapping in tests
-- No PHPUnit test doubles for service classes
+## Engineering Quality Review
+- Tech stack clarity: good (`repo/README.md:5`)
+- Architecture explanation: good (`repo/README.md:97-127`)
+- Testing instructions: good (`repo/README.md:79-93`)
+- Security/roles overview: present (`repo/README.md:249-257`)
+- Workflow and API semantics: detailed (`repo/README.md:131-246`)
 
-Evidence: `grep -r "createMock\|getMockBuilder\|Mockery\|Response::fake\|Http::fake" repo/tests/` → zero matches.
+## High Priority Issues
+- None.
 
----
+## Medium Priority Issues
+- README does not declare project type token at top (`backend|fullstack|web|android|ios|desktop`) as required by this audit prompt’s detection rule.
+  - Evidence: `repo/README.md:1-6`
+- Architecture section claims “All 60 API routes” but route file currently has 63 endpoint declarations.
+  - Evidence: `repo/README.md:111`, `repo/backend/route/api.php:7-110`
 
-## 2. Per-Endpoint Coverage Table
+## Low Priority Issues
+- Verification snippets use `python3 -m json.tool`; this is only for pretty-printing and not required for correctness. Consider optional note/fallback for environments without Python.
+  - Evidence: `repo/README.md:56`, `repo/README.md:64`
 
-| # | Method | Path | HTTP Status(es) Tested | Test File |
-|---|--------|------|------------------------|-----------|
-| 1 | POST | /api/auth/login | 200, 401, 422, lockout 401 | AuthTest |
-| 2 | POST | /api/auth/logout | 200, 401 | AuthTest |
-| 3 | GET | /api/users | 200 (admin), 403 (regular), 401 | UserTest |
-| 4 | POST | /api/users | 201, 422, 409, 403 | UserTest |
-| 5 | GET | /api/users/:id | 200 (own), 403 (other), 404 | UserTest |
-| 6 | PUT | /api/users/:id | — (covered by create+get flow) | UserTest |
-| 7 | DELETE | /api/users/:id | 403 (non-admin), 404 | UserTest |
-| 8 | GET | /api/users/:id/sensitive | 200 (admin), 403 (regular) | DashboardTest |
-| 9 | GET | /api/activities | 200 (published-only for regular) | ActivityTest |
-| 10 | POST | /api/activities | 201, 422, 401 | ActivityTest |
-| 11 | GET | /api/activities/:id | 200, 401 | ActivityTest |
-| 12 | PUT | /api/activities/:id | 200 (creates version on published) | ActivityTest |
-| 13 | PATCH | /api/activities/:id/state | 200, 422 (illegal transition) | ActivityTest |
-| 14 | GET | /api/activities/:id/versions | 200 (version diff present) | ActivityTest |
-| 15 | POST | /api/activities/:id/signups | 409 (headcount), 403 (tags) | ActivityTest |
-| 16 | DELETE | /api/activities/:id/signups/:uid | — | ActivityTest |
-| 17 | GET | /api/activities/:id/tasks | 401 | TaskTest |
-| 18 | POST | /api/activities/:id/tasks | 201, 403, 422 | TaskTest |
-| 19 | PUT | /api/activities/:id/tasks/:tid | 200 | TaskTest |
-| 20 | DELETE | /api/activities/:id/tasks/:tid | 200 | TaskTest |
-| 21 | GET | /api/orders | 200 (scoped) | OrderTest |
-| 22 | POST | /api/orders | 201, 403, 422 | OrderTest |
-| 23 | GET | /api/orders/:id | 401, 403 (OLAZ) | OrderTest |
-| 24 | PATCH | /api/orders/:id/state | 200, 422 (illegal) | OrderTest |
-| 25 | POST | /api/orders/:id/refund | 403 (non-admin), 422 (wrong state) | OrderTest |
-| 26 | POST | /api/orders/:id/invoice-corrections | — | OrderTest |
-| 27 | PATCH | /api/invoice-corrections/:id/review | — | OrderTest |
-| 28 | GET | /api/shipments | — | FulfillmentTest |
-| 29 | POST | /api/shipments | 201, 401 | FulfillmentTest |
-| 30 | GET | /api/shipments/:id | 200 | FulfillmentTest |
-| 31 | POST | /api/shipments/:id/events | 201 | FulfillmentTest |
-| 32 | PATCH | /api/shipments/:id/deliver | 200 | FulfillmentTest |
-| 33 | POST | /api/shipments/:id/exceptions | — | FulfillmentTest |
-| 34 | GET | /api/subscriptions | 200 | FulfillmentTest |
-| 35 | PUT | /api/subscriptions | 200 (persists) | FulfillmentTest |
-| 36 | GET | /api/violation-rules | — | ViolationTest |
-| 37 | POST | /api/violation-rules | 201, 403 | ViolationTest |
-| 38 | PUT | /api/violation-rules/:id | — | ViolationTest |
-| 39 | DELETE | /api/violation-rules/:id | — | ViolationTest |
-| 40 | GET | /api/violations | 200 (RBAC scoped) | ViolationTest |
-| 41 | POST | /api/violations | 201 | ViolationTest |
-| 42 | GET | /api/violations/:id | — | ViolationTest |
-| 43 | POST | /api/violations/:id/evidence | — | ViolationTest |
-| 44 | POST | /api/violations/:id/appeals | 201 | ViolationTest |
-| 45 | PATCH | /api/violations/:id/appeals/review | 422 (no notes), 403 | ViolationTest |
-| 46 | GET | /api/point-summary/users/:uid | 200 | ViolationTest |
-| 47 | GET | /api/point-summary/groups/:gid | — | ViolationTest |
-| 48 | GET | /api/search | 200 (highlighted), 422, 401 | SearchTest |
-| 49 | GET | /api/search/logistics | 200, 422, 401, synonyms | SearchTest |
-| 50 | GET | /api/recommendations | 200, cold-start, 401 | RecommendationTest |
-| 51 | GET | /api/recommendations/activities/:id | 200 (excludes self), 401 | RecommendationTest |
-| 52 | GET | /api/dashboards | 200 | DashboardTest |
-| 53 | POST | /api/dashboards | 201, 422, 403 | DashboardTest |
-| 54 | GET | /api/dashboards/:id | 200, 404 (after delete) | DashboardTest |
-| 55 | PUT | /api/dashboards/:id | 200 (name updated) | DashboardTest |
-| 56 | DELETE | /api/dashboards/:id | 200 | DashboardTest |
-| 57 | POST | /api/dashboards/:id/favorite | 201 | DashboardTest |
-| 58 | DELETE | /api/dashboards/:id/favorite | 200 | DashboardTest |
-| 59 | POST | /api/dashboards/:id/export | 201 (pdf), 422 (bad format) | DashboardTest |
-| 60 | GET | /api/widgets/data | 200, 422 (invalid type) | DashboardTest |
+## Hard Gate Failures
+- None.
 
----
-
-## 3. README Hard Gates
-
-| Gate | Status | Evidence |
-|------|--------|----------|
-| README exists at `repo/README.md` | ✅ PASS | File written in Phase 8 |
-| Quick Start section with Docker commands | ✅ PASS | `docker compose up --build -d` in section 1 |
-| Seed accounts table | ✅ PASS | Table with 6 accounts, usernames, passwords, roles |
-| Test instructions | ✅ PASS | `bash run_tests.sh` section with description |
-| No host-local tool commands (npm, composer, pip) | ✅ PASS | All commands are `docker compose exec …` |
-| Architecture diagram or overview | ✅ PASS | ASCII deployment topology and directory tree |
-| API overview table | ✅ PASS | 10-row group summary table |
-| Security section | ✅ PASS | 8-row security table |
-| Configuration reference | ✅ PASS | 6-row environment variable table |
-
----
-
-## 4. Frontend Unit Tests
-
-**Condition:** Frontend unit tests are required when the frontend contains non-trivial logic that can be exercised independently of the server.
-
-**Assessment:** The frontend (`repo/frontend/`) consists of vanilla HTML + JS files that make `fetch()` calls to the backend API. All logic (filtering, state transitions, RBAC rendering) depends on live API responses. There is no isolated pure-function business logic that would warrant separate unit tests without mocking the HTTP layer. All frontend correctness is verified through the backend API tests.
-
-**Verdict:** Frontend unit tests NOT required for this project type.
-
----
-
-## 5. `run_tests.sh` Compliance
-
-| Rule | Status |
-|------|--------|
-| File exists at `repo/run_tests.sh` | ✅ |
-| Executable (`chmod +x`) | ✅ |
-| Uses `docker compose` (not host-local tools) | ✅ |
-| Builds images before running | ✅ |
-| Starts db + backend + nginx | ✅ |
-| Seeds database | ✅ |
-| Runs PHPUnit inside container | ✅ |
-| Cleans up containers on exit (trap) | ✅ |
-| Does not reference `plans/` directory | ✅ |
-
----
-
-## 6. Pre-submission Self-check
-
-- [x] All tests classified as True No-Mock HTTP
-- [x] Every endpoint has at least one test covering the primary success path
-- [x] RBAC (403), missing token (401), validation (422) covered across test suite
-- [x] README passes all hard gates
-- [x] `run_tests.sh` compliant
-- [x] Frontend unit test condition evaluated and documented
-- [x] No forbidden mock patterns found in test files
-
----
-
-**AUDIT RESULT: PASS**
+## README Verdict
+- **PASS** (all hard gates satisfied).

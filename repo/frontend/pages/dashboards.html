@@ -4,94 +4,226 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboards — Campus Portal</title>
+  <link rel="stylesheet" href="/vendor/layui/css/layui.min.css" />
   <link rel="stylesheet" href="/css/campus.css" />
+  <style>
+    /* Layout editor drag-and-drop */
+    .layout-drag-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px;
+      min-height: 80px;
+      border: 2px dashed var(--c-border, #ddd);
+      border-radius: 6px;
+      background: var(--c-surface-alt, #f7f8fa);
+    }
+    .drag-tile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: #fff;
+      border: 1px solid var(--c-border, #ddd);
+      border-radius: 6px;
+      cursor: grab;
+      user-select: none;
+      font-size: 14px;
+      font-weight: 500;
+      min-width: 160px;
+      transition: box-shadow 0.15s, opacity 0.15s;
+    }
+    .drag-tile:active { cursor: grabbing; }
+    .drag-tile.dragging { opacity: 0.4; box-shadow: none; }
+    .drag-tile.drag-over { box-shadow: 0 0 0 2px var(--c-primary, #2d8cf0); }
+    .drag-tile .drag-handle { font-size: 18px; color: #aaa; line-height: 1; }
+    /* Mobile reorder buttons */
+    .drag-tile .mobile-reorder { display: none; }
+    @media (max-width: 640px) {
+      .drag-tile { cursor: default; min-width: 100%; }
+      .drag-tile .drag-handle { display: none; }
+      .drag-tile .mobile-reorder { display: flex; gap: 4px; margin-left: auto; }
+    }
+    /* Drill panel */
+    #drill-panel {
+      margin-top: 16px;
+      border-top: 2px solid var(--c-border, #ddd);
+      padding-top: 12px;
+    }
+    .drill-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .drill-header strong { font-size: 14px; }
+    .clickable-row {
+      cursor: pointer;
+    }
+    .clickable-row:hover {
+      background: var(--c-surface-alt, #f5f5f5);
+    }
+    /* Layout toolbar */
+    .layout-toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .layout-toolbar span {
+      font-size: 13px;
+      color: var(--c-text-muted, #888);
+      flex: 1;
+    }
+  </style>
 </head>
-<body>
-<div style="display:flex;">
-  <nav id="sidebar">
-    <div id="sidebar-logo"><div class="logo-title">Campus Portal</div><div class="logo-sub">Operations &amp; Logistics</div></div>
-    <div id="sidebar-nav"></div>
-    <div id="sidebar-footer"></div>
-  </nav>
-  <div id="main">
-    <header id="topbar">
-      <span id="page-title">My Dashboards</span>
-      <div id="topbar-actions">
-        <button class="btn btn-primary" onclick="openCreateDashboard()">+ New Dashboard</button>
+<body class="layui-layout-body">
+
+<div class="layui-layout layui-layout-admin">
+
+  <div class="layui-header">
+    <div class="layui-logo cp-logo">
+      <span class="cp-logo-title">Campus Portal</span>
+      <span class="cp-logo-sub">Operations &amp; Logistics</span>
+    </div>
+    <ul class="layui-nav layui-layout-right" id="header-right-nav"></ul>
+  </div>
+
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <ul class="layui-nav layui-nav-tree" lay-filter="side-nav" id="sidebar-nav"></ul>
+    </div>
+  </div>
+
+  <div class="layui-body">
+    <div class="cp-body-inner">
+      <div class="cp-page-bar">
+        <span class="cp-page-title" id="page-title">My Dashboards</span>
+        <div class="cp-page-actions">
+          <button class="layui-btn" onclick="openCreateDashboard()">+ New Dashboard</button>
+        </div>
       </div>
-    </header>
-    <div id="content-wrap">
+
       <div id="dashboard-list">Loading…</div>
 
-      <!-- Widget viewer -->
+      <!-- Widget viewer (shown after selecting a dashboard) -->
       <div class="card" id="widget-viewer" style="display:none;">
         <div class="card-title" id="widget-viewer-title"></div>
-        <div style="display:flex;gap:10px;margin-bottom:14px;">
-          <select id="widget-type-select" class="form-control" style="width:220px;">
+
+        <!-- Normal view controls -->
+        <div id="normal-controls" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+          <select id="widget-type-select" class="layui-select" style="width:220px;">
             <option value="activity_status">Activity Status</option>
             <option value="order_pipeline">Order Pipeline</option>
             <option value="violation_leaderboard">Violation Leaderboard</option>
             <option value="fulfillment_rate">Fulfillment Rate</option>
           </select>
-          <button class="btn btn-secondary" onclick="loadWidget()">Load</button>
+          <button class="layui-btn layui-btn-primary" onclick="loadWidget()">Load</button>
           <div style="flex:1"></div>
-          <button class="btn btn-secondary btn-sm" onclick="exportDashboard('png')">Export PNG</button>
-          <button class="btn btn-secondary btn-sm" onclick="exportDashboard('pdf')">Export PDF</button>
-          <button class="btn btn-secondary btn-sm" onclick="exportDashboard('xlsx')">Export XLSX</button>
+          <button class="layui-btn layui-btn-sm layui-btn-warm" onclick="enterEditMode()">&#9998; Edit Layout</button>
+          <button class="layui-btn layui-btn-sm layui-btn-primary" onclick="exportDashboard('png')">Export PNG</button>
+          <button class="layui-btn layui-btn-sm layui-btn-primary" onclick="exportDashboard('pdf')">Export PDF</button>
+          <button class="layui-btn layui-btn-sm layui-btn-primary" onclick="exportDashboard('xlsx')">Export XLSX</button>
         </div>
+
+        <!-- Widget data view -->
         <div id="widget-data-view"></div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- Create Dashboard Modal -->
-<div class="modal-overlay" id="create-dashboard-modal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">New Dashboard</span>
-      <button class="modal-close" onclick="closeModal('create-dashboard-modal')">&#10005;</button>
-    </div>
-    <form id="create-dashboard-form">
-      <div class="form-group">
-        <label class="form-label">Name *</label>
-        <input type="text" id="d-name" class="form-control" value="My Dashboard" required />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Widgets</label>
-        <div id="widget-builder">
-          <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <input type="checkbox" name="widget" value="activity_status" checked /> Activity Status
-          </label>
-          <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <input type="checkbox" name="widget" value="order_pipeline" checked /> Order Pipeline
-          </label>
-          <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <input type="checkbox" name="widget" value="violation_leaderboard" /> Violation Leaderboard
-          </label>
-          <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <input type="checkbox" name="widget" value="fulfillment_rate" /> Fulfillment Rate
-          </label>
+        <!-- Drill-down panel (hidden until a row is clicked) -->
+        <div id="drill-panel" style="display:none;">
+          <div class="drill-header">
+            <strong id="drill-title">Detail View</strong>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" onclick="closeDrill()">&#10005; Close</button>
+          </div>
+          <div id="drill-content">Loading…</div>
+        </div>
+
+        <!-- Layout editor (shown when Edit Layout is active) -->
+        <div id="layout-editor" style="display:none;">
+          <div class="layout-toolbar">
+            <span id="edit-hint">Drag to reorder widgets. Use arrows on mobile.</span>
+            <button class="layui-btn layui-btn-sm" onclick="saveLayout()">&#10003; Save Layout</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" onclick="cancelEdit()">Cancel</button>
+          </div>
+          <div id="layout-drag-area" class="layout-drag-area"></div>
         </div>
       </div>
-      <div class="form-error" id="create-d-err"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-        <button type="button" class="btn btn-secondary" onclick="closeModal('create-dashboard-modal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Create</button>
-      </div>
-    </form>
+    </div>
   </div>
+
 </div>
 
-<div id="toast-container"></div>
+<!-- Create Dashboard Modal body (hidden) -->
+<div id="create-dashboard-modal-body" style="display:none;padding:20px;">
+  <form class="layui-form" id="create-dashboard-form" novalidate>
+    <div class="layui-form-item">
+      <label class="layui-label">Name *</label>
+      <div class="layui-input-block">
+        <input type="text" id="d-name" class="layui-input" value="My Dashboard" required />
+      </div>
+    </div>
+    <div class="layui-form-item">
+      <label class="layui-label">Widgets</label>
+      <div class="layui-input-block">
+        <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <input type="checkbox" name="widget" value="activity_status" checked /> Activity Status
+        </label>
+        <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <input type="checkbox" name="widget" value="order_pipeline" checked /> Order Pipeline
+        </label>
+        <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <input type="checkbox" name="widget" value="violation_leaderboard" /> Violation Leaderboard
+        </label>
+        <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <input type="checkbox" name="widget" value="fulfillment_rate" /> Fulfillment Rate
+        </label>
+      </div>
+    </div>
+    <div class="form-error" id="create-d-err"></div>
+    <div class="layui-form-item" style="text-align:right;margin-bottom:0;">
+      <button type="button" class="layui-btn layui-btn-primary" onclick="closeCreateDashboard()">Cancel</button>
+      <button type="submit" class="layui-btn">Create</button>
+    </div>
+  </form>
+</div>
+
+<script src="/vendor/layui/layui.min.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/app.js"></script>
 <script>
-let activeDashboardId = null;
+var _layer, _form, _element;
+var _createDashboardModalIdx;
+var activeDashboardId   = null;
+var activeDashboardName = '';
+// Current layout (array of widget descriptors, order = display order)
+var currentLayout = [];
+var editLayout    = []; // working copy during edit mode
+
+var WIDGET_LABELS = {
+  activity_status:       'Activity Status',
+  order_pipeline:        'Order Pipeline',
+  violation_leaderboard: 'Violation Leaderboard',
+  fulfillment_rate:      'Fulfillment Rate',
+};
+
+layui.use(['element', 'layer', 'form', 'laypage'], function() {
+  _layer   = layui.layer;
+  _form    = layui.form;
+  _element = layui.element;
+
+  renderNav();
+  _element.render('nav', 'side-nav');
+  loadDashboards();
+});
+
+// ─────────────────────────────────────────────
+// Dashboard list
+// ─────────────────────────────────────────────
 
 async function loadDashboards() {
   try {
-    const res = await API.get('/dashboards');
+    const res     = await API.get('/dashboards');
     const layouts = res.data || [];
     if (!layouts.length) {
       document.getElementById('dashboard-list').innerHTML =
@@ -99,40 +231,60 @@ async function loadDashboards() {
       return;
     }
     document.getElementById('dashboard-list').innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:20px;">
+      <div class="dashboard-grid" style="margin-bottom:20px;">
         ${layouts.map(d => `
-          <div class="card" style="cursor:pointer;transition:box-shadow .2s;" onclick="selectDashboard(${d.id},'${d.name.replace(/'/g,"\\'")}')">
+          <div class="dashboard-card" onclick="selectDashboard(${d.id},'${d.name.replace(/'/g,"\\'")}', ${JSON.stringify(d.layout_json || []).replace(/"/g,'&quot;')})">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
               <strong>${d.name}</strong>
-              <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteDashboard(${d.id})">&#10005;</button>
+              <button class="layui-btn layui-btn-sm layui-btn-danger"
+                onclick="event.stopPropagation();deleteDashboard(${d.id})">&#10005;</button>
             </div>
             <div style="font-size:12px;color:var(--c-text-muted);margin-top:8px;">Updated ${fmt(d.updated_at)}</div>
-            <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="event.stopPropagation();toggleFavorite(${d.id})">&#9733; Favorite</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" style="margin-top:10px;"
+              onclick="event.stopPropagation();toggleFavorite(${d.id})">&#9733; Favorite</button>
           </div>`).join('')}
       </div>`;
   } catch {
-    document.getElementById('dashboard-list').innerHTML = '<p style="color:var(--c-danger)">Failed to load dashboards.</p>';
+    document.getElementById('dashboard-list').innerHTML =
+      '<p style="color:var(--c-danger)">Failed to load dashboards.</p>';
   }
 }
 
-function selectDashboard(id, name) {
-  activeDashboardId = id;
+function selectDashboard(id, name, layout) {
+  activeDashboardId   = id;
+  activeDashboardName = name;
+  // layout may be array (JSON-decoded by ThinkPHP model) or a JSON string
+  currentLayout = Array.isArray(layout) ? layout : (typeof layout === 'string' ? JSON.parse(layout) : []);
   document.getElementById('widget-viewer').style.display = '';
   document.getElementById('widget-viewer-title').textContent = name;
+  cancelEdit(); // ensure edit mode is off
+  closeDrill();
   loadWidget();
 }
 
-async function loadWidget() {
+// ─────────────────────────────────────────────
+// Widget loading + drill-down
+// ─────────────────────────────────────────────
+
+async function loadWidget(drillStatus) {
   const type = document.getElementById('widget-type-select').value;
   document.getElementById('widget-data-view').innerHTML = 'Loading…';
+  closeDrill();
   try {
-    const res = await API.get(`/widgets/data?widget_type=${type}`);
+    const url = `/widgets/data?widget_type=${type}`;
+    const res  = await API.get(url);
     const data = res.data;
     let html = '';
+
     if (type === 'violation_leaderboard' && Array.isArray(data)) {
-      html = `<table class="data-table"><thead><tr><th>#</th><th>User</th><th>Points</th></tr></thead><tbody>
-        ${data.map((r,i)=>`<tr><td>${i+1}</td><td>${r.username}</td><td style="font-weight:700">${r.total_points}</td></tr>`).join('')}
-      </tbody></table>`;
+      html = `<table class="layui-table">
+        <thead><tr><th>#</th><th>User</th><th>Points</th></tr></thead>
+        <tbody>${data.map((r, i) => `<tr>
+          <td>${i + 1}</td>
+          <td>${r.username}</td>
+          <td style="font-weight:700">${r.total_points}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
     } else if (type === 'fulfillment_rate') {
       html = `<div class="stat-grid">
         <div class="stat-tile"><div class="stat-val">${data.total}</div><div class="stat-label">Total Shipments</div></div>
@@ -140,15 +292,178 @@ async function loadWidget() {
         <div class="stat-tile"><div class="stat-val">${data.rate_pct}%</div><div class="stat-label">Delivery Rate</div></div>
       </div>`;
     } else {
-      html = Object.entries(data).map(([k,v])=>
-        `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border);">
-          ${badge(k)} <strong>${v}</strong></div>`).join('');
+      // activity_status and order_pipeline: status-keyed counts — make rows clickable for drill-down
+      const drillable = (type === 'activity_status' || type === 'order_pipeline');
+      html = Object.entries(data)
+        .filter(([k]) => k !== 'drill')
+        .map(([k, v]) =>
+          `<div class="clickable-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border);"
+            ${drillable ? `onclick="openDrill('${type}','${k}')" title="Click to see details"` : ''}>
+            ${badge(k)} <strong style="display:flex;align-items:center;gap:6px;">${v}${drillable ? '<span style="font-size:11px;color:#aaa">&#9660; details</span>' : ''}</strong>
+          </div>`
+        ).join('');
+      if (!html) html = '<p style="color:var(--c-text-muted)">No data.</p>';
     }
-    document.getElementById('widget-data-view').innerHTML = html || '<p style="color:var(--c-text-muted)">No data.</p>';
+    document.getElementById('widget-data-view').innerHTML = html;
   } catch {
-    document.getElementById('widget-data-view').innerHTML = '<p style="color:var(--c-danger)">Failed to load widget.</p>';
+    document.getElementById('widget-data-view').innerHTML =
+      '<p style="color:var(--c-danger)">Failed to load widget.</p>';
   }
 }
+
+async function openDrill(widgetType, status) {
+  const panel = document.getElementById('drill-panel');
+  const content = document.getElementById('drill-content');
+  document.getElementById('drill-title').textContent =
+    `${WIDGET_LABELS[widgetType] || widgetType} — ${status}`;
+  content.textContent = 'Loading…';
+  panel.style.display = '';
+
+  try {
+    const res   = await API.get(`/widgets/data?widget_type=${widgetType}&drill_status=${encodeURIComponent(status)}`);
+    const items = res.data.drill || [];
+    if (!items.length) {
+      content.innerHTML = '<p style="color:var(--c-text-muted)">No records found for this status.</p>';
+      return;
+    }
+    const isActivity = widgetType === 'activity_status';
+    content.innerHTML = `<table class="layui-table">
+      <thead><tr><th>ID</th><th>${isActivity ? 'Title' : 'Type'}</th><th>Status</th><th>Created</th></tr></thead>
+      <tbody>
+        ${items.map(r => `<tr>
+          <td>#${r.id}</td>
+          <td>${isActivity ? r.title : r.type}</td>
+          <td>${badge(r.status)}</td>
+          <td style="font-size:12px;color:var(--c-text-muted)">${fmt(r.created_at)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  } catch {
+    content.innerHTML = '<p style="color:var(--c-danger)">Failed to load details.</p>';
+  }
+}
+
+function closeDrill() {
+  document.getElementById('drill-panel').style.display = 'none';
+  document.getElementById('drill-content').innerHTML   = '';
+}
+
+// ─────────────────────────────────────────────
+// Drag-and-drop layout editor
+// ─────────────────────────────────────────────
+
+function enterEditMode() {
+  if (!activeDashboardId) { toast('Select a dashboard first.', 'info'); return; }
+  // Clone current layout as working copy
+  editLayout = currentLayout.map(w => Object.assign({}, w, { position: Object.assign({}, w.position) }));
+  if (!editLayout.length) {
+    // Layout might be empty if not yet stored; populate from selected widgets
+    editLayout = [
+      { widget_type: 'activity_status', position: { x: 0, y: 0, w: 6, h: 4 } },
+      { widget_type: 'order_pipeline',  position: { x: 6, y: 0, w: 6, h: 4 } },
+    ];
+  }
+
+  document.getElementById('normal-controls').style.display = 'none';
+  document.getElementById('widget-data-view').style.display = 'none';
+  document.getElementById('drill-panel').style.display = 'none';
+  document.getElementById('layout-editor').style.display = '';
+  renderDragTiles();
+}
+
+function cancelEdit() {
+  document.getElementById('layout-editor').style.display = 'none';
+  document.getElementById('normal-controls').style.display = '';
+  document.getElementById('widget-data-view').style.display = '';
+  editLayout = [];
+}
+
+function renderDragTiles() {
+  const area = document.getElementById('layout-drag-area');
+  area.innerHTML = editLayout.map((w, idx) => `
+    <div class="drag-tile" draggable="true"
+      data-idx="${idx}"
+      ondragstart="onDragStart(event,${idx})"
+      ondragover="onDragOver(event,${idx})"
+      ondrop="onDrop(event,${idx})"
+      ondragend="onDragEnd(event)">
+      <span class="drag-handle">&#8942;</span>
+      <span>${WIDGET_LABELS[w.widget_type] || w.widget_type}</span>
+      <span class="mobile-reorder">
+        <button class="layui-btn layui-btn-xs" onclick="moveWidget(${idx},-1)" title="Move up">&#8679;</button>
+        <button class="layui-btn layui-btn-xs" onclick="moveWidget(${idx},1)"  title="Move down">&#8681;</button>
+      </span>
+    </div>`).join('');
+}
+
+var _dragSrcIdx = null;
+
+function onDragStart(e, idx) {
+  _dragSrcIdx = idx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragOver(e, idx) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.drag-tile').forEach(el => el.classList.remove('drag-over'));
+  if (idx !== _dragSrcIdx) {
+    e.currentTarget.classList.add('drag-over');
+  }
+}
+
+function onDrop(e, targetIdx) {
+  e.preventDefault();
+  if (_dragSrcIdx === null || _dragSrcIdx === targetIdx) return;
+  // Reorder: move src to target position
+  const moved = editLayout.splice(_dragSrcIdx, 1)[0];
+  editLayout.splice(targetIdx, 0, moved);
+  // Recompute positions based on new order (2-column grid, each widget 6 wide)
+  editLayout.forEach((w, i) => {
+    w.position = { x: (i % 2) * 6, y: Math.floor(i / 2) * 4, w: 6, h: 4 };
+  });
+  _dragSrcIdx = null;
+  renderDragTiles();
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.drag-tile').forEach(el => el.classList.remove('drag-over'));
+  _dragSrcIdx = null;
+}
+
+// Mobile: move a widget up or down by one slot
+function moveWidget(idx, dir) {
+  const targetIdx = idx + dir;
+  if (targetIdx < 0 || targetIdx >= editLayout.length) return;
+  const tmp = editLayout[idx];
+  editLayout[idx]       = editLayout[targetIdx];
+  editLayout[targetIdx] = tmp;
+  editLayout.forEach((w, i) => {
+    w.position = { x: (i % 2) * 6, y: Math.floor(i / 2) * 4, w: 6, h: 4 };
+  });
+  renderDragTiles();
+}
+
+async function saveLayout() {
+  if (!activeDashboardId) return;
+  try {
+    await API.put(`/dashboards/${activeDashboardId}`, {
+      name:        activeDashboardName,
+      layout_json: editLayout,
+    });
+    currentLayout = editLayout.slice();
+    toast('Layout saved.', 'success');
+    cancelEdit();
+  } catch (err) {
+    toast(err.data?.msg || 'Save failed.', 'error');
+  }
+}
+
+// ─────────────────────────────────────────────
+// Export / favorite / delete
+// ─────────────────────────────────────────────
 
 async function exportDashboard(format) {
   if (!activeDashboardId) { toast('Select a dashboard first.', 'info'); return; }
@@ -177,6 +492,7 @@ async function deleteDashboard(id) {
     if (activeDashboardId === id) {
       activeDashboardId = null;
       document.getElementById('widget-viewer').style.display = 'none';
+      cancelEdit();
     }
     loadDashboards();
   } catch (err) {
@@ -184,31 +500,46 @@ async function deleteDashboard(id) {
   }
 }
 
-function openCreateDashboard() { document.getElementById('create-dashboard-modal').classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+// ─────────────────────────────────────────────
+// Create dashboard modal
+// ─────────────────────────────────────────────
+
+function openCreateDashboard() {
+  document.getElementById('create-d-err').textContent = '';
+  _createDashboardModalIdx = _layer.open({
+    type: 1,
+    title: 'New Dashboard',
+    area: ['480px'],
+    content: document.getElementById('create-dashboard-modal-body'),
+    success: function() { _form.render(); }
+  });
+}
+
+function closeCreateDashboard() { _layer.close(_createDashboardModalIdx); }
 
 document.getElementById('create-dashboard-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   document.getElementById('create-d-err').textContent = '';
-  const checked = [...document.querySelectorAll('input[name="widget"]:checked')].map(el => ({
+  const checked = [...document.querySelectorAll('input[name="widget"]:checked')].map((el, i) => ({
     widget_type: el.value,
-    position: { x: 0, y: 0, w: 6, h: 4 },
+    position: { x: (i % 2) * 6, y: Math.floor(i / 2) * 4, w: 6, h: 4 },
   }));
-  if (!checked.length) { document.getElementById('create-d-err').textContent = 'Select at least one widget.'; return; }
+  if (!checked.length) {
+    document.getElementById('create-d-err').textContent = 'Select at least one widget.';
+    return;
+  }
   try {
     await API.post('/dashboards', {
-      name: document.getElementById('d-name').value.trim() || 'My Dashboard',
+      name:        document.getElementById('d-name').value.trim() || 'My Dashboard',
       layout_json: checked,
     });
     toast('Dashboard created.', 'success');
-    closeModal('create-dashboard-modal');
+    closeCreateDashboard();
     loadDashboards();
   } catch (err) {
     document.getElementById('create-d-err').textContent = err.data?.msg || 'Failed.';
   }
 });
-
-loadDashboards();
 </script>
 </body>
 </html>

@@ -38,13 +38,14 @@ CREATE TABLE IF NOT EXISTS `user_tags` (
   KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Seed accounts: passwords are bcrypt(cost=12) of the plaintext shown in README
--- Admin@Campus1
+-- Seed accounts: placeholder hashes only — real passwords set by `php think db:seed`.
+-- Run `docker compose exec backend php think db:seed` after migrations to activate credentials.
 INSERT IGNORE INTO `users` (`username`, `password_hash`, `role`) VALUES
-  ('admin',     '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
-  ('ops_user',  '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ops_staff'),
-  ('team_lead', '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'team_lead'),
-  ('reviewer',  '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'reviewer'),
-  ('user1',     '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'regular');
+  ('admin',     '$2y$12$placeholder.hash.admin.AAAAAAAAAAAAAAAAAAAAAA', 'admin'),
+  ('ops_user',  '$2y$12$placeholder.hash.ops_u.AAAAAAAAAAAAAAAAAAAAAA', 'ops_staff'),
+  ('team_lead', '$2y$12$placeholder.hash.lead_.AAAAAAAAAAAAAAAAAAAAAA', 'team_lead'),
+  ('reviewer',  '$2y$12$placeholder.hash.revie.AAAAAAAAAAAAAAAAAAAAAA', 'reviewer'),
+  ('user1',     '$2y$12$placeholder.hash.user1.AAAAAAAAAAAAAAAAAAAAAA', 'regular'),
+  ('user2',     '$2y$12$placeholder.hash.user2.AAAAAAAAAAAAAAAAAAAAAA', 'regular');
 
 SET FOREIGN_KEY_CHECKS = 1;

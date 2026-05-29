@@ -4,7 +4,6 @@ namespace app\service;
 
 use app\model\Activity;
 use app\model\ActivityTag;
-use app\model\User;
 use think\facade\Db;
 use think\facade\Log;
 
@@ -26,8 +25,11 @@ class SearchIndexService
             'body'         => $activity->body,
             'author_name'  => $authorName,
             'tags'         => json_encode($tags, JSON_UNESCAPED_UNICODE),
+            'tags_text'    => implode(' ', $tags), // denormalized for FULLTEXT inclusion
             'view_count'   => (int)$activity->view_count,
+            'reply_count'  => (int)$activity->reply_count,
             'signup_count' => $signupCount,
+            'family_id'    => $activity->getData('family_id') ?? ('activity:' . $activityId),
             'indexed_at'   => date('Y-m-d H:i:s'),
         ];
 
@@ -41,9 +43,94 @@ class SearchIndexService
         } else {
             Db::table('search_index')->insert($data);
         }
+    }
 
-        // Also index into logistics_index if it has a description worth searching
-        $this->indexOrderOrActivity($activityId, 'activity', $activity->title);
+    public function indexOrder(int $orderId): void
+    {
+        $order = Db::table('orders')->where('id', $orderId)->find();
+        if (!$order) return;
+
+        $displayName = "Order #{$orderId}: {$order['type']}";
+        if (!empty($order['description'])) {
+            $displayName .= ' — ' . mb_substr($order['description'], 0, 100);
+        }
+
+        $correctionCount = Db::table('invoice_corrections')
+            ->where('order_id', $orderId)
+            ->count();
+
+        $existing = Db::table('logistics_index')
+            ->where('entity_type', 'order')
+            ->where('entity_id', $orderId)
+            ->find();
+
+        $familyId = $order['family_id'] ?? ('order:' . $orderId);
+
+        if ($existing) {
+            // Preserve view_count (tracked externally); refresh display fields, reply_count, and family_id
+            Db::table('logistics_index')->where('id', $existing['id'])->update([
+                'display_name' => $displayName,
+                'pinyin_name'  => $this->computePinyin($displayName),
+                'reply_count'  => $correctionCount,
+                'family_id'    => $familyId,
+                'indexed_at'   => date('Y-m-d H:i:s'),
+            ]);
+        } else {
+            Db::table('logistics_index')->insert([
+                'entity_type'  => 'order',
+                'entity_id'    => $orderId,
+                'display_name' => $displayName,
+                'pinyin_name'  => $this->computePinyin($displayName),
+                'view_count'   => 0,
+                'reply_count'  => $correctionCount,
+                'family_id'    => $familyId,
+                'indexed_at'   => date('Y-m-d H:i:s'),
+            ]);
+        }
+    }
+
+    public function indexShipment(int $shipmentId): void
+    {
+        $shipment = Db::table('shipments')->where('id', $shipmentId)->find();
+        if (!$shipment) return;
+
+        $packages   = Db::table('shipment_packages')->where('shipment_id', $shipmentId)->select();
+        $carriers   = array_filter(array_unique(array_column((array)$packages, 'carrier_name')));
+        $carrierStr = !empty($carriers) ? implode(', ', $carriers) : '';
+
+        $displayName = "Shipment #{$shipmentId} (Order #{$shipment['order_id']})";
+        if ($carrierStr) {
+            $displayName .= " via {$carrierStr}";
+        }
+
+        $eventCount = Db::table('shipment_events')
+            ->where('shipment_id', $shipmentId)
+            ->count();
+
+        $existing = Db::table('logistics_index')
+            ->where('entity_type', 'shipment')
+            ->where('entity_id', $shipmentId)
+            ->find();
+
+        if ($existing) {
+            // Preserve view_count; refresh display fields and reply_count from shipment events
+            Db::table('logistics_index')->where('id', $existing['id'])->update([
+                'display_name' => $displayName,
+                'pinyin_name'  => $this->computePinyin($displayName),
+                'reply_count'  => $eventCount,
+                'indexed_at'   => date('Y-m-d H:i:s'),
+            ]);
+        } else {
+            Db::table('logistics_index')->insert([
+                'entity_type'  => 'shipment',
+                'entity_id'    => $shipmentId,
+                'display_name' => $displayName,
+                'pinyin_name'  => $this->computePinyin($displayName),
+                'view_count'   => 0,
+                'reply_count'  => $eventCount,
+                'indexed_at'   => date('Y-m-d H:i:s'),
+            ]);
+        }
     }
 
     public function deleteIndex(string $entityType, int $entityId): void
@@ -69,23 +156,32 @@ class SearchIndexService
         $ftQuery   = '+' . implode('* +', explode(' ', trim($sanitized))) . '*';
 
         $builder = Db::table('search_index')
-            ->field('*, MATCH(title, body, author_name) AGAINST(? IN BOOLEAN MODE) AS relevance_score', [$ftQuery])
-            ->whereRaw('MATCH(title, body, author_name) AGAINST(? IN BOOLEAN MODE)', [$ftQuery]);
+            ->field('*, MATCH(title, body, author_name, tags_text) AGAINST(? IN BOOLEAN MODE) AS relevance_score', [$ftQuery])
+            ->whereRaw('MATCH(title, body, author_name, tags_text) AGAINST(? IN BOOLEAN MODE)', [$ftQuery]);
 
-        // Role-based scoping: regular users only see activity (no draft/archived)
+        $countBuilder = Db::table('search_index')
+            ->whereRaw('MATCH(title, body, author_name, tags_text) AGAINST(? IN BOOLEAN MODE)', [$ftQuery]);
+
+        // Regular users: only published activities
         if ($role === 'regular') {
-            $builder->where('entity_type', 'activity');
+            $builder->where('entity_type', 'activity')
+                    ->whereRaw("entity_id IN (SELECT `id` FROM `activities` WHERE `status` = 'published')");
+            $countBuilder->where('entity_type', 'activity')
+                         ->whereRaw("entity_id IN (SELECT `id` FROM `activities` WHERE `status` = 'published')");
         }
 
         // Filters
         if (!empty($filters['entity_type'])) {
             $builder->where('entity_type', $filters['entity_type']);
+            $countBuilder->where('entity_type', $filters['entity_type']);
         }
         if (!empty($filters['date_from'])) {
             $builder->where('indexed_at', '>=', $filters['date_from']);
+            $countBuilder->where('indexed_at', '>=', $filters['date_from']);
         }
         if (!empty($filters['date_to'])) {
             $builder->where('indexed_at', '<=', $filters['date_to']);
+            $countBuilder->where('indexed_at', '<=', $filters['date_to']);
         }
 
         // Sorting
@@ -98,51 +194,53 @@ class SearchIndexService
 
         $results = $builder->page($page, $perPage)->select();
 
-        // Add highlight to each result
+        // Add highlight to each result (title, body excerpt, and matching tags)
         $highlighted = [];
         foreach ($results as $row) {
             $row['highlight'] = [
-                'title' => $this->highlight($row['title'] ?? '', $query),
-                'body'  => $this->highlight(mb_substr($row['body'] ?? '', 0, 200), $query),
+                'title'     => $this->highlight($row['title'] ?? '', $query),
+                'body'      => $this->highlight(mb_substr($row['body'] ?? '', 0, 200), $query),
+                'tags_text' => $this->highlight($row['tags_text'] ?? '', $query),
             ];
             $highlighted[] = $row;
         }
 
-        $total = Db::table('search_index')
-            ->whereRaw('MATCH(title, body, author_name) AGAINST(? IN BOOLEAN MODE)', [$ftQuery])
-            ->count();
+        $total = $countBuilder->count();
 
         return ['data' => $highlighted, 'total' => $total, 'page' => $page, 'per_page' => $perPage];
     }
 
-    public function logisticsSearch(string $query, array $filters, string $sort, int $page, int $perPage, bool $usePinyin, bool $useSynonyms): array
+    public function logisticsSearch(string $query, array $filters, string $sort, int $page, int $perPage, bool $usePinyin, bool $useSynonyms, int $userId, string $userRole): array
     {
         // Tokenize
-        $tokens = preg_split('/[\s\p{P}]+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY);
+        $rawTokens = preg_split('/[\s\p{P}]+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY);
 
-        // Spell correction via Levenshtein against known terms
-        $tokens = array_map(fn($t) => $this->spellCorrect($t), $tokens);
+        // Spell correction — track originals to detect corrections for scoring purposes
+        $correctedTokens = array_map(fn($t) => $this->spellCorrect($t), $rawTokens);
 
-        // Synonym expansion
+        // Synonym expansion — kept separate so synonym hits score lower than primary hits
+        $synonymTokens = [];
         if ($useSynonyms) {
-            $expanded = [];
-            foreach ($tokens as $token) {
-                $expanded[] = $token;
+            foreach ($correctedTokens as $token) {
                 $row = Db::table('synonym_map')->where('term', strtolower($token))->find();
                 if ($row) {
                     $syns = json_decode($row['synonyms'], true) ?? [];
-                    $expanded = array_merge($expanded, array_slice($syns, 0, 3));
+                    foreach (array_slice($syns, 0, 3) as $syn) {
+                        if (!in_array($syn, $correctedTokens, true)) {
+                            $synonymTokens[] = $syn;
+                        }
+                    }
                 }
             }
-            $tokens = array_unique($expanded);
+            $synonymTokens = array_unique($synonymTokens);
         }
 
-        $builder = Db::table('logistics_index');
+        $allTokens = array_unique(array_merge($correctedTokens, $synonymTokens));
 
-        // Build OR conditions across display_name (and pinyin_name if enabled)
+        // Build WHERE conditions (any token in any searchable field → include row)
         $conditions = [];
         $bindings   = [];
-        foreach ($tokens as $token) {
+        foreach ($allTokens as $token) {
             if (mb_strlen($token) >= 3) {
                 $conditions[] = 'display_name LIKE ?';
                 $bindings[]   = '%' . $token . '%';
@@ -153,24 +251,131 @@ class SearchIndexService
             }
         }
 
+        // Relevance sort: fetch all matches, score in PHP, sort, paginate in PHP
+        if ($sort === 'relevance') {
+            return $this->logisticsRelevanceSearch(
+                $conditions, $bindings, $filters, $page, $perPage,
+                $correctedTokens, $rawTokens, $synonymTokens, $usePinyin, $userId, $userRole
+            );
+        }
+
+        // Non-relevance sorts: SQL ORDER BY + SQL pagination
+        $builder = Db::table('logistics_index');
         if (!empty($conditions)) {
             $builder->whereRaw('(' . implode(' OR ', $conditions) . ')', $bindings);
         }
-
-        // Filters
-        if (!empty($filters['entity_type'])) {
+        if (!empty($filters['entity_type']) && in_array($filters['entity_type'], ['order', 'shipment'], true)) {
             $builder->where('entity_type', $filters['entity_type']);
         }
+        $this->applyLogisticsAuthFilter($builder, $userId, $userRole);
 
         match ($sort) {
-            'recency' => $builder->order('indexed_at', 'desc'),
-            default   => $builder->order('indexed_at', 'desc'),
+            'recency'     => $builder->order('indexed_at', 'desc'),
+            'popularity'  => $builder->order('view_count', 'desc'),
+            'reply_count' => $builder->order('reply_count', 'desc'),
         };
 
         $results = $builder->page($page, $perPage)->select();
-        $total   = Db::table('logistics_index')->count(); // simplified count
 
-        return ['data' => $results, 'total' => $total, 'page' => $page, 'per_page' => $perPage];
+        $countBuilder = Db::table('logistics_index');
+        if (!empty($conditions)) {
+            $countBuilder->whereRaw('(' . implode(' OR ', $conditions) . ')', $bindings);
+        }
+        if (!empty($filters['entity_type']) && in_array($filters['entity_type'], ['order', 'shipment'], true)) {
+            $countBuilder->where('entity_type', $filters['entity_type']);
+        }
+        $this->applyLogisticsAuthFilter($countBuilder, $userId, $userRole);
+        $total = $countBuilder->count();
+
+        return ['data' => array_values((array)$results), 'total' => $total, 'page' => $page, 'per_page' => $perPage];
+    }
+
+    /**
+     * Fetch all matching logistics rows, score each by token-hit weight, sort, then slice for the page.
+     * Uses PHP-side scoring because LIKE has no inherent relevance score.
+     */
+    private function logisticsRelevanceSearch(
+        array $conditions, array $bindings, array $filters,
+        int $page, int $perPage,
+        array $correctedTokens, array $rawTokens, array $synonymTokens, bool $usePinyin,
+        int $userId, string $userRole
+    ): array {
+        $builder = Db::table('logistics_index');
+        if (!empty($conditions)) {
+            $builder->whereRaw('(' . implode(' OR ', $conditions) . ')', $bindings);
+        }
+        if (!empty($filters['entity_type']) && in_array($filters['entity_type'], ['order', 'shipment'], true)) {
+            $builder->where('entity_type', $filters['entity_type']);
+        }
+        $this->applyLogisticsAuthFilter($builder, $userId, $userRole);
+
+        $allRows = (array)$builder->select();
+
+        foreach ($allRows as &$row) {
+            $row['relevance_score'] = $this->scoreLogisticsRow(
+                $row, $correctedTokens, $rawTokens, $synonymTokens, $usePinyin
+            );
+        }
+        unset($row);
+
+        usort($allRows, fn($a, $b) => $b['relevance_score'] <=> $a['relevance_score']);
+
+        $total  = count($allRows);
+        $offset = ($page - 1) * $perPage;
+        $paged  = array_slice($allRows, $offset, $perPage);
+
+        return ['data' => array_values($paged), 'total' => $total, 'page' => $page, 'per_page' => $perPage];
+    }
+
+    /**
+     * Restrict logistics_index results to entities the caller is authorized to see.
+     * Admin: unrestricted. Non-admin: orders and shipments owned by the caller (created_by = userId).
+     */
+    private function applyLogisticsAuthFilter(object $builder, int $userId, string $userRole): void
+    {
+        if ($userRole === 'admin') {
+            return;
+        }
+        $builder->whereRaw(
+            '((entity_type = \'order\' AND entity_id IN (SELECT `id` FROM `orders` WHERE `created_by` = ?))'
+            . ' OR (entity_type = \'shipment\' AND entity_id IN (SELECT `id` FROM `shipments` WHERE `created_by` = ?)))',
+            [$userId, $userId]
+        );
+    }
+
+    /**
+     * Token-hit relevance score for a single logistics_index row.
+     * Weights: exact primary token = 2.0, spell-corrected token = 1.5,
+     *          pinyin match = 1.0, synonym expansion = 0.5.
+     */
+    private function scoreLogisticsRow(array $row, array $correctedTokens, array $rawTokens, array $synonymTokens, bool $usePinyin): float
+    {
+        $score      = 0.0;
+        $displayLow = mb_strtolower($row['display_name'] ?? '');
+        $pinyinLow  = $usePinyin ? mb_strtolower($row['pinyin_name'] ?? '') : '';
+
+        foreach ($correctedTokens as $i => $token) {
+            if (mb_strlen($token) < 3) continue;
+            $tokenLow  = mb_strtolower($token);
+            $rawLow    = mb_strtolower($rawTokens[$i] ?? $token);
+            $hitWeight = ($tokenLow === $rawLow) ? 2.0 : 1.5; // spell-corrected hit is slightly penalised
+
+            if (str_contains($displayLow, $tokenLow)) {
+                $score += $hitWeight;
+            }
+            if ($usePinyin && $pinyinLow !== '' && str_contains($pinyinLow, $tokenLow)) {
+                $score += 1.0;
+            }
+        }
+
+        foreach ($synonymTokens as $token) {
+            if (mb_strlen($token) < 3) continue;
+            if (str_contains($displayLow, mb_strtolower($token))) {
+                $score += 0.5;
+            }
+        }
+
+        return $score;
     }
 
     private function highlight(string $text, string $query): string
@@ -198,20 +403,6 @@ class SearchIndexService
             }
         }
         return $best;
-    }
-
-    private function indexOrderOrActivity(int $entityId, string $type, string $name): void
-    {
-        // Only index activities in logistics index for now
-        if ($type !== 'activity') return;
-        $pinyin = $this->computePinyin($name);
-        $data   = ['entity_type' => $type, 'entity_id' => $entityId, 'display_name' => $name, 'pinyin_name' => $pinyin, 'indexed_at' => date('Y-m-d H:i:s')];
-        $exists = Db::table('logistics_index')->where('entity_type', $type)->where('entity_id', $entityId)->find();
-        if ($exists) {
-            Db::table('logistics_index')->where('id', $exists['id'])->update($data);
-        } else {
-            Db::table('logistics_index')->insert($data);
-        }
     }
 
     /**

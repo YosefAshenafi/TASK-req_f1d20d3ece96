@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS dashboard_exports (
 -- Encrypted sensitive columns on orders and users
 -- invoice_contact_enc stores AES-256-CBC ciphertext (base64-prefixed with IV)
 ALTER TABLE orders
-    ADD COLUMN IF NOT EXISTS invoice_contact_enc TEXT NULL COMMENT 'AES-256-CBC encrypted contact name',
-    ADD COLUMN IF NOT EXISTS invoice_address_enc TEXT NULL COMMENT 'AES-256-CBC encrypted address';
+    ADD COLUMN invoice_contact_enc TEXT NULL COMMENT 'AES-256-CBC encrypted contact name',
+    ADD COLUMN invoice_address_enc TEXT NULL COMMENT 'AES-256-CBC encrypted address';
 
 ALTER TABLE users
-    ADD COLUMN IF NOT EXISTS passenger_id_enc TEXT NULL COMMENT 'AES-256-CBC encrypted passenger identifier';
+    ADD COLUMN passenger_id_enc TEXT NULL COMMENT 'AES-256-CBC encrypted passenger identifier';

@@ -75,4 +75,32 @@ abstract class TestCase extends PhpUnitTestCase
     {
         return $this->loginAs('reviewer', 'Review@Campus1');
     }
+
+    /**
+     * Direct PDO connection to the test database.
+     * Uses the same env vars injected into the backend container.
+     */
+    protected function dbPdo(): \PDO
+    {
+        static $pdo = null;
+        if ($pdo === null) {
+            $host = getenv('DB_HOST') ?: 'db';
+            $name = getenv('DB_NAME') ?: 'campus';
+            $user = getenv('DB_USER') ?: 'campus';
+            $pass = getenv('DB_PASSWORD') ?: 'campus';
+            $pdo  = new \PDO("mysql:host={$host};dbname={$name};charset=utf8mb4", $user, $pass);
+            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        }
+        return $pdo;
+    }
+
+    /**
+     * Fetch user_id for a given username directly from the DB.
+     */
+    protected function dbUserId(string $username): int
+    {
+        $stmt = $this->dbPdo()->prepare('SELECT id FROM users WHERE username = ? LIMIT 1');
+        $stmt->execute([$username]);
+        return (int)$stmt->fetchColumn();
+    }
 }

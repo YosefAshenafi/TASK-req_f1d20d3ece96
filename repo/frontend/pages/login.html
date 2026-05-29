@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login — Campus Portal</title>
+  <link rel="stylesheet" href="/vendor/layui/css/layui.min.css" />
   <link rel="stylesheet" href="/css/campus.css" />
 </head>
 <body>
@@ -14,33 +15,42 @@
       <p>Unified Operations &amp; Logistics</p>
     </div>
 
-    <form id="login-form" novalidate>
-      <div class="form-group">
-        <label class="form-label" for="username">Username</label>
-        <input id="username" name="username" type="text" class="form-control"
-               autocomplete="username" autofocus required />
+    <form id="login-form" class="layui-form login-form" novalidate>
+      <div class="layui-form-item">
+        <label class="layui-label" for="username">Username</label>
+        <div class="layui-input-block">
+          <input type="text" id="username" name="username" class="layui-input"
+                 placeholder="Username" autocomplete="username" autofocus required />
+        </div>
         <div class="form-error" id="err-username"></div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label" for="password">Password</label>
-        <input id="password" name="password" type="password" class="form-control"
-               autocomplete="current-password" required />
+      <div class="layui-form-item">
+        <label class="layui-label" for="password">Password</label>
+        <div class="layui-input-block">
+          <input type="password" id="password" name="password" class="layui-input"
+                 placeholder="Password" autocomplete="current-password" required />
+        </div>
         <div class="form-error" id="err-password"></div>
       </div>
 
       <div class="form-error" id="err-global" style="margin-bottom:12px;"></div>
 
-      <button type="submit" class="btn btn-primary" id="submit-btn" style="width:100%;justify-content:center;">
-        Sign In
-      </button>
+      <div class="layui-form-item">
+        <button type="submit" class="layui-btn" id="submit-btn" style="width:100%;">Sign In</button>
+      </div>
     </form>
   </div>
 </div>
 
-<div id="toast-container"></div>
+<script src="/vendor/layui/layui.min.js"></script>
 <script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
 <script>
+layui.use(['form', 'layer'], function() {
+  // form submit is handled via native submit event below
+});
+
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const username = document.getElementById('username').value.trim();
@@ -48,7 +58,9 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   const btn = document.getElementById('submit-btn');
 
   // Clear errors
-  ['err-username','err-password','err-global'].forEach(id => { document.getElementById(id).textContent = ''; });
+  ['err-username', 'err-password', 'err-global'].forEach(id => {
+    document.getElementById(id).textContent = '';
+  });
 
   if (!username) { document.getElementById('err-username').textContent = 'Username is required.'; return; }
   if (password.length < 10) { document.getElementById('err-password').textContent = 'Password must be at least 10 characters.'; return; }
@@ -60,9 +72,9 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     const data = await API.post('/auth/login', { username, password });
     localStorage.setItem('campus_token', data.data.token);
     localStorage.setItem('campus_session', JSON.stringify({
-      user_id: data.data.user_id,
-      username: data.data.username,
-      role: data.data.role,
+      user_id:  data.data.user.id,
+      username: data.data.user.username,
+      role:     data.data.user.role,
     }));
     window.location.href = '/index.html';
   } catch (err) {

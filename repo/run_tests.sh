@@ -27,7 +27,7 @@ $COMPOSE up -d db backend nginx
 echo "==> Waiting for backend to be ready…"
 for i in $(seq 1 30); do
   if $COMPOSE exec -T backend curl -sf http://localhost:9000/ >/dev/null 2>&1 || \
-     curl -sf http://localhost:8080/api/auth/login \
+     curl -sf http://localhost:3000/api/auth/login \
        -X POST -H "Content-Type: application/json" \
        -d '{"username":"x","password":"xxxxxxxxxx"}' >/dev/null 2>&1; then
     break
@@ -41,8 +41,14 @@ $COMPOSE exec -T backend php think db:seed 2>&1 || true
 echo "==> Running PHPUnit tests…"
 $COMPOSE exec -T backend \
   php vendor/bin/phpunit \
-    --configuration /app/../phpunit.xml \
+    --configuration /app/phpunit.xml \
     --testdox \
     2>&1
+
+echo "==> Running frontend unit tests…"
+docker run --rm -e TZ=UTC \
+  -v "${ROOT}:/app" \
+  node:18-alpine \
+  sh -c "node /app/tests/frontend/test-fmt.js && node /app/tests/frontend/test-tags.js && node /app/tests/frontend/test-render.js"
 
 echo "==> All tests complete."

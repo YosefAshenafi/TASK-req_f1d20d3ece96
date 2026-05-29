@@ -25,6 +25,14 @@ class ActivityService
         'archived'    => [],
     ];
 
+    /** Timestamp column written when each target state is first entered */
+    private const TIMESTAMP_MAP = [
+        'published'   => 'published_at',
+        'in_progress' => 'in_progress_at',
+        'completed'   => 'completed_at',
+        'archived'    => 'archived_at',
+    ];
+
     /** Roles that may trigger each transition */
     private const TRANSITION_ROLES = [
         'draft->published'        => ['admin', 'ops_staff', 'team_lead'],
@@ -47,12 +55,20 @@ class ActivityService
             'required_supplies'=> $data['required_supplies'] ?? [],
         ]);
 
+        $tags = [];
         if (!empty($data['tags'])) {
-            $this->syncTags($activity->id, (array)$data['tags']);
+            $tags = array_unique((array)$data['tags']);
+            $this->syncTags($activity->id, $tags);
         }
 
+        // Set stable family_id once at creation time
+        $sortedTags = $tags;
+        sort($sortedTags);
+        $familyId = !empty($sortedTags) ? 'tag:' . $sortedTags[0] : 'activity:' . $activity->id;
+        Activity::where('id', $activity->id)->update(['family_id' => $familyId]);
+
         $this->triggerIndex($activity->id);
-        return $activity;
+        return Activity::find($activity->id);
     }
 
     public function update(int $id, array $data, int $updaterId, string $role): Activity
@@ -120,7 +136,12 @@ class ActivityService
             throw new ForbiddenException("Role '{$role}' may not perform this transition");
         }
 
-        Activity::where('id', $id)->update(['status' => $target]);
+        $updates = ['status' => $target];
+        if (isset(self::TIMESTAMP_MAP[$target])) {
+            $updates[self::TIMESTAMP_MAP[$target]] = date('Y-m-d H:i:s');
+        }
+
+        Activity::where('id', $id)->update($updates);
         Log::info('activity_transition', ['id' => $id, 'from' => $current, 'to' => $target, 'by' => $userId]);
 
         $this->triggerIndex($id);
@@ -166,10 +187,15 @@ class ActivityService
             if ($existing->status === 'active') throw new ConflictException('Already signed up');
             // Reactivate canceled signup
             ActivitySignup::where('id', $existing->id)->update(['status' => 'active', 'signed_up_at' => date('Y-m-d H:i:s')]);
+            $this->recordBehavior($userId, $activityId, 'signup');
+            $this->triggerIndex($activityId);
             return ActivitySignup::find($existing->id);
         }
 
-        return ActivitySignup::create(['activity_id' => $activityId, 'user_id' => $userId]);
+        $signup = ActivitySignup::create(['activity_id' => $activityId, 'user_id' => $userId]);
+        $this->recordBehavior($userId, $activityId, 'signup');
+        $this->triggerIndex($activityId);
+        return $signup;
     }
 
     public function cancelSignup(int $activityId, int $userId, int $requesterId, string $role): void
@@ -198,6 +224,15 @@ class ActivityService
             app(\app\service\SearchIndexService::class)->indexActivity($activityId);
         } catch (\Throwable $e) {
             Log::warning('index_trigger_failed', ['activity_id' => $activityId, 'error' => $e->getMessage()]);
+        }
+    }
+
+    private function recordBehavior(int $userId, int $activityId, string $eventType): void
+    {
+        try {
+            (new \app\service\BehaviorTracker())->record($userId, 'activity', $activityId, $eventType);
+        } catch (\Throwable $e) {
+            Log::warning('behavior_record_failed', ['event' => $eventType, 'error' => $e->getMessage()]);
         }
     }
 }

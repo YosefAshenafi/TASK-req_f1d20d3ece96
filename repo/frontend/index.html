@@ -4,31 +4,36 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard — Campus Portal</title>
+  <link rel="stylesheet" href="/vendor/layui/css/layui.min.css" />
   <link rel="stylesheet" href="/css/campus.css" />
 </head>
-<body>
+<body class="layui-layout-body">
 
-<div style="display:flex;">
-  <!-- Sidebar -->
-  <nav id="sidebar">
-    <div id="sidebar-logo">
-      <div class="logo-title">Campus Portal</div>
-      <div class="logo-sub">Operations &amp; Logistics</div>
+<div class="layui-layout layui-layout-admin">
+
+  <div class="layui-header">
+    <div class="layui-logo cp-logo">
+      <span class="cp-logo-title">Campus Portal</span>
+      <span class="cp-logo-sub">Operations &amp; Logistics</span>
     </div>
-    <div id="sidebar-nav"></div>
-    <div id="sidebar-footer"></div>
-  </nav>
+    <ul class="layui-nav layui-layout-right" id="header-right-nav"></ul>
+  </div>
 
-  <!-- Main -->
-  <div id="main">
-    <header id="topbar">
-      <span id="page-title">Dashboard</span>
-      <div id="topbar-actions">
-        <span id="topbar-date" style="font-size:12px;color:#6b7280;"></span>
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <ul class="layui-nav layui-nav-tree" lay-filter="side-nav" id="sidebar-nav"></ul>
+    </div>
+  </div>
+
+  <div class="layui-body">
+    <div class="cp-body-inner">
+      <div class="cp-page-bar">
+        <span class="cp-page-title" id="page-title">Dashboard</span>
+        <div class="cp-page-actions">
+          <span id="topbar-date" style="font-size:12px;color:var(--c-text-muted);"></span>
+        </div>
       </div>
-    </header>
 
-    <div id="content-wrap">
       <!-- Stat tiles -->
       <div class="stat-grid" id="stat-grid">
         <div class="stat-tile"><div class="stat-val" id="stat-activities">—</div><div class="stat-label">Active Activities</div></div>
@@ -37,7 +42,7 @@
         <div class="stat-tile"><div class="stat-val" id="stat-violations">—</div><div class="stat-label">Active Violations</div></div>
       </div>
 
-      <!-- Activity status chart -->
+      <!-- Charts row -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <div class="card">
           <div class="card-title">Activity Status Breakdown</div>
@@ -49,25 +54,40 @@
         </div>
       </div>
 
-      <!-- Recent activity feed -->
+      <!-- Recent activities -->
       <div class="card" style="margin-top:0;">
         <div class="card-title">Recent Activities</div>
         <div id="recent-activities">Loading…</div>
       </div>
     </div>
   </div>
+
 </div>
 
-<div id="toast-container"></div>
+<script src="/vendor/layui/layui.min.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/app.js"></script>
 <script>
-(async function init() {
+var _layer, _form, _element;
+
+layui.use(['element', 'layer', 'form', 'laypage'], function() {
+  _layer   = layui.layer;
+  _form    = layui.form;
+  _element = layui.element;
+
   if (!requireAuth()) return;
+  renderNav();
+  _element.render('nav', 'side-nav');
 
   // Date display
-  document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-US', {weekday:'short',year:'numeric',month:'short',day:'numeric'});
+  document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+  });
 
+  init();
+});
+
+async function init() {
   // Load widget data in parallel
   const [actStats, orderStats] = await Promise.allSettled([
     API.get('/widgets/data?widget_type=activity_status'),
@@ -85,7 +105,8 @@
       html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f1f7;">
         ${badge(st)} <strong>${cnt}</strong></div>`;
     }
-    document.getElementById('activity-status-chart').innerHTML = html || '<p style="color:#9ca3af">No data yet.</p>';
+    document.getElementById('activity-status-chart').innerHTML =
+      html || '<p style="color:#9ca3af">No data yet.</p>';
   }
 
   // Order pipeline
@@ -99,7 +120,8 @@
       html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f1f7;">
         ${badge(st)} <strong>${cnt}</strong></div>`;
     }
-    document.getElementById('order-pipeline-chart').innerHTML = html || '<p style="color:#9ca3af">No data yet.</p>';
+    document.getElementById('order-pipeline-chart').innerHTML =
+      html || '<p style="color:#9ca3af">No data yet.</p>';
   }
 
   // Recent activities
@@ -110,7 +132,7 @@
       document.getElementById('recent-activities').innerHTML = '<p style="color:#9ca3af">No activities yet.</p>';
     } else {
       document.getElementById('recent-activities').innerHTML = `
-        <table class="data-table">
+        <table class="layui-table">
           <thead><tr><th>Title</th><th>Status</th><th>Created</th></tr></thead>
           <tbody>${activities.map(a => `<tr>
             <td><a href="/pages/activities.html?id=${a.id}" style="color:var(--c-accent);text-decoration:none;">${a.title}</a></td>
@@ -122,7 +144,7 @@
   } catch (err) {
     document.getElementById('recent-activities').innerHTML = '<p style="color:#ef4444">Failed to load activities.</p>';
   }
-})();
+}
 </script>
 </body>
 </html>

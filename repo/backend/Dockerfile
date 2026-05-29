@@ -6,7 +6,8 @@ RUN apt-get update && apt-get install -y \
     libgd-dev ghostscript \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_mysql mysqli zip gd bcmath \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "upload_max_filesize = 50M\npost_max_size = 50M" > $PHP_INI_DIR/conf.d/uploads.ini
 
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 

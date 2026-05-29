@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shipments — Campus Portal</title>
+  <link rel="stylesheet" href="/vendor/layui/css/layui.min.css" />
+  <link rel="stylesheet" href="/css/campus.css" />
+</head>
+<body class="layui-layout-body">
+
+<div class="layui-layout layui-layout-admin">
+
+  <div class="layui-header">
+    <div class="layui-logo cp-logo">
+      <span class="cp-logo-title">Campus Portal</span>
+      <span class="cp-logo-sub">Operations &amp; Logistics</span>
+    </div>
+    <ul class="layui-nav layui-layout-right" id="header-right-nav"></ul>
+  </div>
+
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <ul class="layui-nav layui-nav-tree" lay-filter="side-nav" id="sidebar-nav"></ul>
+    </div>
+  </div>
+
+  <div class="layui-body">
+    <div class="cp-body-inner">
+      <div class="cp-page-bar">
+        <span class="cp-page-title" id="page-title">Shipments</span>
+        <div class="cp-page-actions">
+          <button class="layui-btn" id="btn-new-shipment" style="display:none;" onclick="openCreateModal()">
+            + New Shipment
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="card" style="padding:16px 20px;margin-bottom:16px;">
+        <div class="search-bar">
+          <select id="filter-status" class="layui-select" style="width:180px;">
+            <option value="">All Statuses</option>
+            <option value="created">Created</option>
+            <option value="in_transit">In Transit</option>
+            <option value="delivered">Delivered</option>
+            <option value="exception">Exception</option>
+          </select>
+          <button class="layui-btn layui-btn-primary" onclick="loadShipments(1)">Filter</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="shipments-table">Loading…</div>
+        <div id="pagination"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Create Shipment Modal body (hidden) -->
+<div id="create-modal-body" style="display:none;padding:20px;max-height:70vh;overflow-y:auto;">
+  <form class="layui-form" id="create-form" novalidate>
+    <div class="layui-form-item">
+      <label class="layui-label">Order ID *</label>
+      <div class="layui-input-block">
+        <input type="number" id="f-order-id" class="layui-input" required />
+      </div>
+    </div>
+
+    <div class="layui-form-item">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label class="layui-label" style="float:none;width:auto;">Packages * <span style="font-size:11px;color:var(--c-text-muted)">(at least one)</span></label>
+        <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" onclick="addPackageRow()">+ Add Package</button>
+      </div>
+      <div id="packages-list"></div>
+    </div>
+
+    <div class="form-error" id="create-err"></div>
+    <div class="layui-form-item" style="text-align:right;margin-bottom:0;">
+      <button type="button" class="layui-btn layui-btn-primary" onclick="closeCreateModal()">Cancel</button>
+      <button type="submit" class="layui-btn">Create Shipment</button>
+    </div>
+  </form>
+</div>
+
+<!-- Events Modal body (hidden) -->
+<div id="events-modal-body" style="display:none;padding:20px;max-height:70vh;overflow-y:auto;">
+  <div id="events-content"></div>
+  <div id="add-event-section" style="display:none;margin-top:16px;border-top:1px solid var(--c-border);padding-top:16px;">
+    <div style="font-weight:600;margin-bottom:10px;">Add Event</div>
+    <form class="layui-form" id="add-event-form">
+      <div class="layui-form-item">
+        <label class="layui-label">Event Type</label>
+        <div class="layui-input-block">
+          <select id="event-type" class="layui-select">
+            <option value="dispatched">Dispatched</option>
+            <option value="in_transit">In Transit</option>
+            <option value="delivered">Delivered</option>
+            <option value="exception">Exception</option>
+          </select>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-label">Location</label>
+        <div class="layui-input-block">
+          <input type="text" id="event-location" class="layui-input" placeholder="Location (optional)" />
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-label">Note</label>
+        <div class="layui-input-block">
+          <textarea id="event-note" class="layui-textarea" rows="2" placeholder="Note (optional)"></textarea>
+        </div>
+      </div>
+      <div class="layui-form-item" style="text-align:right;margin-bottom:0;">
+        <button type="button" class="layui-btn" onclick="submitEvent()">Add Event</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/vendor/layui/layui.min.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script>
+var _layer, _form, _element;
+var _createModalIdx, _eventsModalIdx;
+var currentPage = 1;
+var activeShipmentId = null;
+var pkgCounter = 0;
+
+layui.use(['element', 'layer', 'form', 'laypage'], function() {
+  _layer   = layui.layer;
+  _form    = layui.form;
+  _element = layui.element;
+
+  renderNav();
+  _element.render('nav', 'side-nav');
+
+  if (hasRole('admin', 'ops_staff')) {
+    document.getElementById('btn-new-shipment').style.display = '';
+  }
+
+  loadShipments(1);
+});
+
+async function loadShipments(page) {
+  currentPage = page || 1;
+  const status = document.getElementById('filter-status').value;
+  const params = new URLSearchParams({ page: currentPage, limit: 15 });
+  if (status) params.set('status', status);
+
+  try {
+    const res = await API.get('/shipments?' + params.toString());
+    const shipments = res.data?.data || [];
+    if (!shipments.length) {
+      document.getElementById('shipments-table').innerHTML =
+        '<p style="color:var(--c-text-muted);padding:12px 0;">No shipments found.</p>';
+      return;
+    }
+    const canAct = hasRole('admin', 'ops_staff');
+    document.getElementById('shipments-table').innerHTML = `
+      <table class="layui-table">
+        <thead><tr>
+          <th>ID</th><th>Order</th><th>Status</th><th>Carrier</th><th>Tracking</th><th>Created</th><th>Actions</th>
+        </tr></thead>
+        <tbody>${shipments.map(s => `<tr>
+          <td>#${s.id}</td>
+          <td>${s.order_id ? '#' + s.order_id : '—'}</td>
+          <td>${badge(s.status)}</td>
+          <td>${s.carrier_name || '—'}</td>
+          <td style="font-size:12px">${s.tracking_number || '—'}</td>
+          <td style="font-size:12px">${fmt(s.created_at)}</td>
+          <td style="white-space:nowrap;">
+            <button class="layui-btn layui-btn-sm layui-btn-primary" onclick="showEvents(${s.id})">Events</button>
+            ${canAct && s.status !== 'delivered' ? `<button class="layui-btn layui-btn-sm" onclick="deliver(${s.id})">Deliver</button>` : ''}
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    const meta = res.data;
+    renderPagination('pagination', currentPage, Math.ceil((meta.total || 0) / 15), 'loadShipments');
+  } catch {
+    document.getElementById('shipments-table').innerHTML =
+      '<p style="color:var(--c-danger)">Failed to load shipments.</p>';
+  }
+}
+
+async function deliver(id) {
+  try {
+    await API.patch(`/shipments/${id}/deliver`, {});
+    toast('Shipment marked as delivered.', 'success');
+    loadShipments(currentPage);
+  } catch (err) {
+    toast(err.data?.msg || 'Delivery confirmation failed.', 'error');
+  }
+}
+
+async function showEvents(id) {
+  activeShipmentId = id;
+  document.getElementById('events-content').innerHTML = 'Loading…';
+  const canAct = hasRole('admin', 'ops_staff');
+  document.getElementById('add-event-section').style.display = canAct ? '' : 'none';
+
+  _eventsModalIdx = _layer.open({
+    type: 1,
+    title: 'Shipment Events',
+    area: ['600px', '70vh'],
+    content: document.getElementById('events-modal-body'),
+    success: function() { if (canAct) _form.render(); }
+  });
+
+  try {
+    const res = await API.get(`/shipments/${id}`);
+    const events = res.data?.events || [];
+    if (!events.length) {
+      document.getElementById('events-content').innerHTML =
+        '<p style="color:var(--c-text-muted)">No events recorded.</p>';
+      return;
+    }
+    document.getElementById('events-content').innerHTML = events.map(ev => `
+      <div style="border-bottom:1px solid var(--c-border);padding:10px 0;">
+        <div style="display:flex;justify-content:space-between;">
+          <strong>${ev.event_type}</strong>
+          <span style="font-size:12px;color:var(--c-text-muted)">${fmt(ev.created_at)}</span>
+        </div>
+        ${ev.location ? `<div style="font-size:12px;color:var(--c-text-muted)">${ev.location}</div>` : ''}
+        ${ev.note ? `<div style="font-size:13px;margin-top:4px;">${ev.note}</div>` : ''}
+      </div>`).join('');
+  } catch {
+    document.getElementById('events-content').innerHTML =
+      '<p style="color:var(--c-danger)">Failed to load events.</p>';
+  }
+}
+
+async function submitEvent() {
+  if (!activeShipmentId) return;
+  const body = {
+    event_type: document.getElementById('event-type').value,
+    location:   document.getElementById('event-location').value.trim() || null,
+    note:       document.getElementById('event-note').value.trim() || null,
+  };
+  try {
+    await API.post(`/shipments/${activeShipmentId}/events`, body);
+    toast('Event added.', 'success');
+    // reload events display
+    const res = await API.get(`/shipments/${activeShipmentId}`);
+    const events = res.data?.events || [];
+    document.getElementById('events-content').innerHTML = events.map(ev => `
+      <div style="border-bottom:1px solid var(--c-border);padding:10px 0;">
+        <div style="display:flex;justify-content:space-between;">
+          <strong>${ev.event_type}</strong>
+          <span style="font-size:12px;color:var(--c-text-muted)">${fmt(ev.created_at)}</span>
+        </div>
+        ${ev.location ? `<div style="font-size:12px;color:var(--c-text-muted)">${ev.location}</div>` : ''}
+        ${ev.note ? `<div style="font-size:13px;margin-top:4px;">${ev.note}</div>` : ''}
+      </div>`).join('');
+    document.getElementById('event-location').value = '';
+    document.getElementById('event-note').value = '';
+  } catch (err) {
+    toast(err.data?.msg || 'Failed to add event.', 'error');
+  }
+}
+
+function addPackageRow() {
+  pkgCounter++;
+  const idx = pkgCounter;
+  const row = document.createElement('div');
+  row.id = `pkg-row-${idx}`;
+  row.className = 'pkg-row';
+  row.innerHTML = `
+    <button type="button" class="pkg-row-remove" onclick="removePkg(${idx})">&#10005;</button>
+    <div class="pkg-grid">
+      <div>
+        <div style="font-size:11px;font-weight:600;margin-bottom:4px;">Ref</div>
+        <input type="text" class="layui-input pkg-ref" placeholder="PKG-${idx}" />
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;margin-bottom:4px;">Carrier</div>
+        <input type="text" class="layui-input pkg-carrier" placeholder="FedEx" />
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;margin-bottom:4px;">Tracking #</div>
+        <input type="text" class="layui-input pkg-tracking" placeholder="Tracking #" />
+      </div>
+    </div>`;
+  document.getElementById('packages-list').appendChild(row);
+}
+
+function removePkg(idx) {
+  const row = document.getElementById(`pkg-row-${idx}`);
+  if (row) row.remove();
+}
+
+function openCreateModal() {
+  document.getElementById('packages-list').innerHTML = '';
+  pkgCounter = 0;
+  addPackageRow();
+  _createModalIdx = _layer.open({
+    type: 1,
+    title: 'New Shipment',
+    area: ['560px', '75vh'],
+    content: document.getElementById('create-modal-body'),
+    success: function() {}
+  });
+}
+
+function closeCreateModal() { _layer.close(_createModalIdx); }
+
+document.getElementById('create-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  document.getElementById('create-err').textContent = '';
+
+  const pkgRows = document.querySelectorAll('#packages-list .pkg-row');
+  if (!pkgRows.length) {
+    document.getElementById('create-err').textContent = 'At least one package is required.';
+    return;
+  }
+
+  const packages = Array.from(pkgRows).map((row, i) => ({
+    package_ref:     row.querySelector('.pkg-ref').value.trim() || `PKG-${i + 1}`,
+    carrier_name:    row.querySelector('.pkg-carrier').value.trim() || null,
+    tracking_number: row.querySelector('.pkg-tracking').value.trim() || null,
+  }));
+
+  const body = {
+    order_id: parseInt(document.getElementById('f-order-id').value),
+    packages,
+  };
+
+  try {
+    await API.post('/shipments', body);
+    toast('Shipment created.', 'success');
+    closeCreateModal();
+    loadShipments(1);
+  } catch (err) {
+    document.getElementById('create-err').textContent = err.data?.msg || 'Creation failed.';
+  }
+});
+</script>
+</body>
+</html>
