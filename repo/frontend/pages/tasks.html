@@ -112,8 +112,9 @@ async function loadTasks() {
     const res = await API.get(`/activities/${id}/tasks`);
     const tasks = res.data || [];
     if (!tasks.length) {
-      document.getElementById('tasks-table').innerHTML =
-        '<p style="color:var(--c-text-muted);padding:12px 0;">No tasks for this activity.</p>';
+      document.getElementById('tasks-table').innerHTML = canManage
+        ? `<p style="color:var(--c-text-muted);padding:12px 0;">This activity (ID ${id}) has no tasks yet. Use <strong>+ Add Task</strong> above to create one.</p>`
+        : `<p style="color:var(--c-text-muted);padding:12px 0;">This activity (ID ${id}) has no tasks yet.</p>`;
       return;
     }
     document.getElementById('tasks-table').innerHTML = `

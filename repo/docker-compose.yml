@@ -35,6 +35,15 @@ services:
       - ./phpunit.xml:/app/phpunit.xml
       - ./frontend:/app/frontend
       - ./uploads:/app/public/uploads
+    # Healthy once php-fpm is accepting FastCGI connections on :9000, which only
+    # happens after the entrypoint has finished seeding the database. nginx waits
+    # on this condition so the API is live the moment the stack reports ready.
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit((int)!@fsockopen(\"127.0.0.1\", 9000));'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
 
   nginx:
     image: nginx:1.25-alpine
@@ -45,7 +54,17 @@ services:
       - ./frontend:/var/www/frontend
       - ./uploads:/var/www/uploads
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    # Healthy once nginx serves the frontend on port 80 (published as host 3000).
+    # Use 127.0.0.1 explicitly: inside this image `localhost` resolves to IPv6 ::1,
+    # but nginx (`listen 80;`) binds IPv4 only, so a `localhost` probe would fail.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   playwright:
     image: mcr.microsoft.com/playwright:v1.44.0-jammy

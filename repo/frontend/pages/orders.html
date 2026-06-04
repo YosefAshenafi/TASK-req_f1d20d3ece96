@@ -116,7 +116,7 @@ async function loadOrders(page) {
           <td>${badge(o.status)}</td>
           <td>${o.activity_id || '—'}</td>
           <td style="font-size:12px">${fmt(o.created_at)}</td>
-          <td>${stateActions(o)}</td>
+          <td style="white-space:nowrap;">${stateActions(o)}${hasRole('admin','ops_staff') ? ` <button class="layui-btn layui-btn-sm layui-btn-danger" onclick="deleteOrder(${o.id})">Delete</button>` : ''}</td>
         </tr>`).join('')}</tbody>
       </table>`;
     const meta = res.data;
@@ -143,6 +143,18 @@ function stateActions(o) {
     btns.push(`<button class="layui-btn layui-btn-sm layui-btn-danger" onclick="advance(${o.id},'canceled')">Cancel</button>`);
   }
   return btns.join(' ') || '—';
+}
+
+async function deleteOrder(id) {
+  if (!confirm(`Delete order #${id} and ALL connected records (shipments, packages, scan events, refunds, invoice corrections)?\n\nThis cannot be undone.`)) return;
+  try {
+    const res = await API.delete(`/orders/${id}`);
+    const c = res.data?.cascade || {};
+    toast(`Order deleted (removed ${c.shipments||0} shipments, ${c.refunds||0} refunds).`, 'success');
+    loadOrders(currentPage);
+  } catch (err) {
+    toast(err.data?.msg || 'Delete failed.', 'error');
+  }
 }
 
 async function advance(id, status) {

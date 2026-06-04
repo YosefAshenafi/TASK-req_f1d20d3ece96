@@ -4,6 +4,7 @@ namespace app\controller;
 
 use think\Request;
 use think\facade\Log;
+use think\facade\Db;
 use app\model\Shipment;
 use app\service\FulfillmentService;
 use app\service\SearchIndexService;
@@ -106,6 +107,51 @@ class Fulfillment
         $data  = $request->post();
         $event = $this->service->recordException($id, $data['note'] ?? '', (int)$request->user_id);
         return json(['code' => 201, 'msg' => 'Exception recorded', 'data' => $event->toArray()], 201);
+    }
+
+    /**
+     * DELETE /api/shipments/{id} — Admin (any) or Operations Staff (own shipments).
+     *
+     * Hard delete with cascade: removes the shipment together with its packages
+     * and scan events in a single transaction, then drops it from the logistics
+     * index. Irreversible.
+     */
+    public function destroy(Request $request, int $id)
+    {
+        if (!in_array($request->user_role, ['admin', 'ops_staff'], true)) {
+            throw new ForbiddenException('Operations Staff access required');
+        }
+        $shipment = Shipment::find($id);
+        if (!$shipment) throw new NotFoundException('Shipment not found');
+        if ($request->user_role !== 'admin' && $shipment->created_by !== $request->user_id) {
+            throw new ForbiddenException('Access denied');
+        }
+
+        $counts = Db::transaction(function () use ($id) {
+            $c = [
+                'packages' => Db::table('shipment_packages')->where('shipment_id', $id)->count(),
+                'events'   => Db::table('shipment_events')->where('shipment_id', $id)->count(),
+            ];
+            Db::table('shipment_events')->where('shipment_id', $id)->delete();
+            Db::table('shipment_packages')->where('shipment_id', $id)->delete();
+            Db::table('shipments')->where('id', $id)->delete();
+            return $c;
+        });
+
+        try { (new SearchIndexService())->deleteIndex('shipment', $id); } catch (\Throwable $e) {}
+
+        try {
+            Db::table('audit_log')->insert([
+                'user_id'     => (int)$request->user_id,
+                'action'      => 'delete',
+                'entity_type' => 'shipment',
+                'entity_id'   => $id,
+                'payload'     => json_encode($counts, JSON_UNESCAPED_UNICODE),
+            ]);
+        } catch (\Throwable $e) { Log::warning('audit_write_failed', ['entity' => 'shipment', 'id' => $id, 'error' => $e->getMessage()]); }
+
+        Log::info('shipment_deleted', ['id' => $id, 'by' => $request->user_id, 'cascade' => $counts]);
+        return json(['code' => 200, 'msg' => 'Shipment deleted', 'data' => ['id' => $id, 'cascade' => $counts]]);
     }
 
     public function getSubscription(Request $request)

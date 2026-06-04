@@ -1,0 +1,88 @@
+[2026-06-04T13:19:11+00:00][info] request
+[2026-06-04T13:19:11+00:00][info] request
+[2026-06-04T13:19:11+00:00][error] [2]mkdir(): File exists
+[2026-06-04T13:19:11+00:00][error] unhandled_exception
+[2026-06-04T13:19:11+00:00][sql] CONNECT:[ UseTime:0.001358s ] mysql:host=db;port=3306;dbname=campus;charset=utf8mb4
+[2026-06-04T13:19:11+00:00][sql] SHOW FULL COLUMNS FROM `recommendation_cache` [ RunTime:0.001699s ]
+[2026-06-04T13:19:11+00:00][sql] SELECT * FROM `recommendation_cache` WHERE  `user_id` = 1  AND `context` = 'list'  AND `context_entity_id` IS NULL  AND `computed_at` >= '2026-06-04 12:19:11' LIMIT 1 [ RunTime:0.000503s ]
+[2026-06-04T13:19:13+00:00][info] request
+[2026-06-04T13:19:13+00:00][info] request
+[2026-06-04T13:19:13+00:00][sql] CONNECT:[ UseTime:0.002225s ] mysql:host=db;port=3306;dbname=campus;charset=utf8mb4
+[2026-06-04T13:19:13+00:00][sql] CONNECT:[ UseTime:0.001688s ] mysql:host=db;port=3306;dbname=campus;charset=utf8mb4
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `recommendation_cache` [ RunTime:0.001723s ]
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `activities` [ RunTime:0.002111s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT COUNT(*) AS think_count FROM `activities` LIMIT 1 [ RunTime:0.000437s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT * FROM `recommendation_cache` WHERE  `user_id` = 1  AND `context` = 'list'  AND `context_entity_id` IS NULL  AND `computed_at` >= '2026-06-04 12:19:13' LIMIT 1 [ RunTime:0.000945s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT * FROM `activities` LIMIT 0,12 [ RunTime:0.000535s ]
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `users` [ RunTime:0.001978s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT `id`,`username`,`role` FROM `users` WHERE  `id` = 1 [ RunTime:0.000454s ]
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `activity_tags` [ RunTime:0.000964s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT * FROM `activity_tags` WHERE  `activity_id` IN (2,3,5) [ RunTime:0.000594s ]
+[2026-06-04T13:19:13+00:00][info] request
+[2026-06-04T13:19:13+00:00][info] request
+[2026-06-04T13:19:13+00:00][sql] CONNECT:[ UseTime:0.000380s ] mysql:host=db;port=3306;dbname=campus;charset=utf8mb4
+[2026-06-04T13:19:13+00:00][sql] CONNECT:[ UseTime:0.000649s ] mysql:host=db;port=3306;dbname=campus;charset=utf8mb4
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `recommendation_cache` [ RunTime:0.000681s ]
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `activities` [ RunTime:0.000816s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT * FROM `recommendation_cache` WHERE  `user_id` = 1  AND `context` = 'list'  AND `context_entity_id` IS NULL  AND `computed_at` >= '2026-06-04 12:19:13' LIMIT 1 [ RunTime:0.000256s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT COUNT(*) AS think_count FROM `activities` LIMIT 1 [ RunTime:0.000183s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT * FROM `activities` LIMIT 0,12 [ RunTime:0.000149s ]
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `users` [ RunTime:0.000605s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT `id`,`username`,`role` FROM `users` WHERE  `id` = 1 [ RunTime:0.000153s ]
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `activity_tags` [ RunTime:0.000335s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT * FROM `activity_tags` WHERE  `activity_id` IN (2,3,5) [ RunTime:0.000149s ]
+[2026-06-04T13:19:13+00:00][info] request
+[2026-06-04T13:19:13+00:00][info] request
+[2026-06-04T13:19:13+00:00][sql] CONNECT:[ UseTime:0.000507s ] mysql:host=db;port=3306;dbname=campus;charset=utf8mb4
+[2026-06-04T13:19:13+00:00][sql] CONNECT:[ UseTime:0.000868s ] mysql:host=db;port=3306;dbname=campus;charset=utf8mb4
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `recommendation_cache` [ RunTime:0.000768s ]
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `activities` [ RunTime:0.000915s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT * FROM `recommendation_cache` WHERE  `user_id` = 1  AND `context` = 'list'  AND `context_entity_id` IS NULL  AND `computed_at` >= '2026-06-04 12:19:13' LIMIT 1 [ RunTime:0.000283s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT COUNT(*) AS think_count FROM `activities` LIMIT 1 [ RunTime:0.000150s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT * FROM `activities` LIMIT 0,12 [ RunTime:0.000147s ]
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `users` [ RunTime:0.000543s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT `id`,`username`,`role` FROM `users` WHERE  `id` = 1 [ RunTime:0.000203s ]
+[2026-06-04T13:19:13+00:00][sql] SHOW FULL COLUMNS FROM `activity_tags` [ RunTime:0.000727s ]
+[2026-06-04T13:19:13+00:00][sql] SELECT * FROM `activity_tags` WHERE  `activity_id` IN (2,3,5) [ RunTime:0.000173s ]
+[2026-06-04T13:19:20+00:00][info] request
+[2026-06-04T13:19:20+00:00][sql] CONNECT:[ UseTime:0.001360s ] mysql:host=db;port=3306;dbname=campus;charset=utf8mb4
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `activities` [ RunTime:0.001681s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT * FROM `activities` WHERE  `id` = 5 LIMIT 1 [ RunTime:0.000454s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `activity_signups` [ RunTime:0.001118s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT COUNT(*) AS think_count FROM `activity_signups` WHERE  `activity_id` = 5 LIMIT 1 [ RunTime:0.000517s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `activity_tasks` [ RunTime:0.001325s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT COUNT(*) AS think_count FROM `activity_tasks` WHERE  `activity_id` = 5 LIMIT 1 [ RunTime:0.000485s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `activity_saves` [ RunTime:0.001255s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT COUNT(*) AS think_count FROM `activity_saves` WHERE  `activity_id` = 5 LIMIT 1 [ RunTime:0.000719s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `activity_tags` [ RunTime:0.001153s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT COUNT(*) AS think_count FROM `activity_tags` WHERE  `activity_id` = 5 LIMIT 1 [ RunTime:0.000681s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `activity_versions` [ RunTime:0.001036s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT COUNT(*) AS think_count FROM `activity_versions` WHERE  `activity_id` = 5 LIMIT 1 [ RunTime:0.000402s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `orders` [ RunTime:0.000971s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT COUNT(*) AS think_count FROM `orders` WHERE  `activity_id` = 5 LIMIT 1 [ RunTime:0.000310s ]
+[2026-06-04T13:19:20+00:00][sql] UPDATE `orders`  SET `activity_id` = NULL  WHERE  `activity_id` = 5 [ RunTime:0.000167s ]
+[2026-06-04T13:19:20+00:00][sql] DELETE FROM `activity_signups` WHERE  `activity_id` = 5 [ RunTime:0.000137s ]
+[2026-06-04T13:19:20+00:00][sql] DELETE FROM `activity_tasks` WHERE  `activity_id` = 5 [ RunTime:0.000160s ]
+[2026-06-04T13:19:20+00:00][sql] DELETE FROM `activity_saves` WHERE  `activity_id` = 5 [ RunTime:0.000230s ]
+[2026-06-04T13:19:20+00:00][sql] DELETE FROM `activity_tags` WHERE  `activity_id` = 5 [ RunTime:0.000150s ]
+[2026-06-04T13:19:20+00:00][sql] UPDATE `activities`  SET `current_version_id` = NULL  WHERE  `id` = 5 [ RunTime:0.000192s ]
+[2026-06-04T13:19:20+00:00][sql] DELETE FROM `activity_versions` WHERE  `activity_id` = 5 [ RunTime:0.000135s ]
+[2026-06-04T13:19:20+00:00][sql] DELETE FROM `activities` WHERE  `id` = 5 [ RunTime:0.000216s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `search_index` [ RunTime:0.000751s ]
+[2026-06-04T13:19:20+00:00][sql] DELETE FROM `search_index` WHERE  `entity_type` = 'activity'  AND `entity_id` = 5 [ RunTime:0.000212s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `logistics_index` [ RunTime:0.000412s ]
+[2026-06-04T13:19:20+00:00][sql] DELETE FROM `logistics_index` WHERE  `entity_type` = 'activity'  AND `entity_id` = 5 [ RunTime:0.000208s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `index_orphan_candidates` [ RunTime:0.000410s ]
+[2026-06-04T13:19:20+00:00][sql] INSERT INTO `index_orphan_candidates` SET `entity_type` = 'activity' , `entity_id` = 5 , `deleted_at` = '2026-06-04 13:19:20' [ RunTime:0.000231s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `audit_log` [ RunTime:0.000441s ]
+[2026-06-04T13:19:20+00:00][sql] INSERT INTO `audit_log` SET `user_id` = 1 , `action` = 'delete' , `entity_type` = 'activity' , `entity_id` = 5 , `payload` = '{\"signups\":0,\"tasks\":0,\"saves\":0,\"tags\":0,\"versions\":0,\"orders_unlinked\":0}' [ RunTime:0.000793s ]
+[2026-06-04T13:19:20+00:00][info] activity_deleted
+[2026-06-04T13:19:20+00:00][info] request
+[2026-06-04T13:19:20+00:00][sql] CONNECT:[ UseTime:0.000484s ] mysql:host=db;port=3306;dbname=campus;charset=utf8mb4
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `activities` [ RunTime:0.000634s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT COUNT(*) AS think_count FROM `activities` LIMIT 1 [ RunTime:0.000166s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT * FROM `activities` LIMIT 0,12 [ RunTime:0.000141s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `users` [ RunTime:0.000409s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT `id`,`username`,`role` FROM `users` WHERE  `id` = 1 [ RunTime:0.000163s ]
+[2026-06-04T13:19:20+00:00][sql] SHOW FULL COLUMNS FROM `activity_tags` [ RunTime:0.000331s ]
+[2026-06-04T13:19:20+00:00][sql] SELECT * FROM `activity_tags` WHERE  `activity_id` IN (2,3) [ RunTime:0.000205s ]

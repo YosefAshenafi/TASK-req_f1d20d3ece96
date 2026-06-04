@@ -4,6 +4,7 @@ namespace app\controller;
 
 use think\Request;
 use think\facade\Log;
+use think\facade\Db;
 use app\model\Order as OrderModel;
 use app\service\OrderService;
 use app\service\SearchIndexService;
@@ -187,5 +188,69 @@ class Order
 
         $correction = $this->service->reviewCorrection($id, $decision, $notes, (int)$request->user_id);
         return json(['code' => 200, 'msg' => 'Review submitted', 'data' => ['status' => $correction->status]]);
+    }
+
+    /**
+     * DELETE /api/orders/{id} — Admin (any order) or Operations Staff (own orders).
+     *
+     * Hard delete with hierarchical cascade: removes the order together with its
+     * shipments (and each shipment's packages and scan events), refunds, and
+     * invoice corrections in a single transaction, then drops the order and its
+     * shipments from the logistics index. Irreversible.
+     */
+    public function destroy(Request $request, int $id)
+    {
+        if (!in_array($request->user_role, ['admin', 'ops_staff'], true)) {
+            throw new ForbiddenException('Operations Staff or Administrator access required');
+        }
+
+        $order = OrderModel::find($id);
+        if (!$order) throw new NotFoundException('Order not found');
+        if ($request->user_role !== 'admin' && $order->created_by !== $request->user_id) {
+            throw new ForbiddenException('Access denied');
+        }
+
+        $index       = new SearchIndexService();
+        $shipmentIds = Db::table('shipments')->where('order_id', $id)->column('id');
+
+        $counts = Db::transaction(function () use ($id, $shipmentIds) {
+            $c = [
+                'shipments'           => count($shipmentIds),
+                'packages'            => 0,
+                'events'              => 0,
+                'refunds'             => Db::table('order_refunds')->where('order_id', $id)->count(),
+                'invoice_corrections' => Db::table('invoice_corrections')->where('order_id', $id)->count(),
+            ];
+
+            if (!empty($shipmentIds)) {
+                $c['events']   = Db::table('shipment_events')->whereIn('shipment_id', $shipmentIds)->count();
+                $c['packages'] = Db::table('shipment_packages')->whereIn('shipment_id', $shipmentIds)->count();
+                Db::table('shipment_events')->whereIn('shipment_id', $shipmentIds)->delete();
+                Db::table('shipment_packages')->whereIn('shipment_id', $shipmentIds)->delete();
+                Db::table('shipments')->whereIn('id', $shipmentIds)->delete();
+            }
+
+            Db::table('order_refunds')->where('order_id', $id)->delete();
+            Db::table('invoice_corrections')->where('order_id', $id)->delete();
+            Db::table('orders')->where('id', $id)->delete();
+
+            return $c;
+        });
+
+        foreach ($shipmentIds as $sid) { try { $index->deleteIndex('shipment', (int)$sid); } catch (\Throwable $e) {} }
+        try { $index->deleteIndex('order', $id); } catch (\Throwable $e) {}
+
+        try {
+            Db::table('audit_log')->insert([
+                'user_id'     => (int)$request->user_id,
+                'action'      => 'delete',
+                'entity_type' => 'order',
+                'entity_id'   => $id,
+                'payload'     => json_encode($counts, JSON_UNESCAPED_UNICODE),
+            ]);
+        } catch (\Throwable $e) { Log::warning('audit_write_failed', ['entity' => 'order', 'id' => $id, 'error' => $e->getMessage()]); }
+
+        Log::info('order_deleted', ['id' => $id, 'by' => $request->user_id, 'cascade' => $counts]);
+        return json(['code' => 200, 'msg' => 'Order deleted', 'data' => ['id' => $id, 'cascade' => $counts]]);
     }
 }

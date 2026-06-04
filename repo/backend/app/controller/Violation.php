@@ -4,6 +4,7 @@ namespace app\controller;
 
 use think\Request;
 use think\facade\Log;
+use think\facade\Db;
 use app\model\Violation as ViolationModel;
 use app\model\ViolationRule;
 use app\model\UserPointCache;
@@ -185,5 +186,77 @@ class Violation
         $cache  = GroupPointCache::where('group_id', $gid)->find();
         $points = $cache ? (int)$cache->total_points : 0;
         return json(['code' => 200, 'msg' => 'ok', 'data' => ['group_id' => $gid, 'total_points' => $points]]);
+    }
+
+    /**
+     * DELETE /api/violations/{id} — Administrator or Reviewer.
+     *
+     * Hard delete with hierarchical cascade: removes the violation together with
+     * its evidence (DB rows + uploaded files), appeals, and appeal reviews in a
+     * single transaction. The subject's demerit-point total is corrected by
+     * reversing this violation's points — unless they were already reversed by an
+     * approved appeal (status 'reversed'), in which case no further adjustment is
+     * made. Irreversible.
+     */
+    public function destroy(Request $request, int $id)
+    {
+        if (!in_array($request->user_role, ['admin', 'reviewer'], true)) {
+            throw new ForbiddenException('Reviewer or Administrator access required');
+        }
+
+        $violation = ViolationModel::find($id);
+        if (!$violation) throw new NotFoundException('Violation not found');
+
+        $appealIds     = Db::table('violation_appeals')->where('violation_id', $id)->column('id');
+        $evidencePaths = Db::table('violation_evidence')->where('violation_id', $id)->column('file_path');
+
+        $counts = Db::transaction(function () use ($id, $appealIds) {
+            $c = [
+                'evidence'       => Db::table('violation_evidence')->where('violation_id', $id)->count(),
+                'appeals'        => count($appealIds),
+                'appeal_reviews' => 0,
+            ];
+            if (!empty($appealIds)) {
+                $c['appeal_reviews'] = Db::table('violation_appeal_reviews')->whereIn('appeal_id', $appealIds)->count();
+                Db::table('violation_appeal_reviews')->whereIn('appeal_id', $appealIds)->delete();
+                Db::table('violation_appeals')->whereIn('id', $appealIds)->delete();
+            }
+            Db::table('violation_evidence')->where('violation_id', $id)->delete();
+            Db::table('violations')->where('id', $id)->delete();
+            return $c;
+        });
+
+        // Correct demerit totals: a violation still contributes its points unless
+        // an approved appeal already reversed them (status 'reversed').
+        if ($violation->status !== 'reversed' && (int)$violation->points_applied !== 0) {
+            try {
+                $this->service->updatePointCache(
+                    (int)$violation->subject_user_id,
+                    $violation->group_id !== null ? (int)$violation->group_id : null,
+                    -(int)$violation->points_applied
+                );
+            } catch (\Throwable $e) {
+                Log::warning('violation_points_reverse_failed', ['id' => $id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        // Best-effort removal of evidence files from disk.
+        foreach ($evidencePaths as $path) {
+            $abs = '/app/public' . $path;
+            if (is_file($abs)) { @unlink($abs); }
+        }
+
+        try {
+            Db::table('audit_log')->insert([
+                'user_id'     => (int)$request->user_id,
+                'action'      => 'delete',
+                'entity_type' => 'violation',
+                'entity_id'   => $id,
+                'payload'     => json_encode($counts, JSON_UNESCAPED_UNICODE),
+            ]);
+        } catch (\Throwable $e) { Log::warning('audit_write_failed', ['entity' => 'violation', 'id' => $id, 'error' => $e->getMessage()]); }
+
+        Log::info('violation_deleted', ['id' => $id, 'by' => $request->user_id, 'cascade' => $counts]);
+        return json(['code' => 200, 'msg' => 'Violation deleted', 'data' => ['id' => $id, 'cascade' => $counts]]);
     }
 }

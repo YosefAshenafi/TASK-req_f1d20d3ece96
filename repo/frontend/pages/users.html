@@ -34,6 +34,27 @@
         </div>
       </div>
 
+      <!-- Roles reference: maps each role code (stored on the user / used by the
+           API) to its display name and permissions, so you can tell exactly which
+           role a given user ID has. -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-weight:600;margin-bottom:6px;">Roles reference</div>
+        <p style="color:var(--c-text-muted);font-size:12px;margin:0 0 12px;">
+          Each role has a <strong>code</strong> (what the system stores on the user record and uses for access control)
+          and a display name. The Role column below shows both, so you always know which role an account holds.
+        </p>
+        <table class="layui-table" style="margin:0;">
+          <thead><tr><th style="width:150px">Role code</th><th style="width:170px">Display name</th><th>What this role can do</th></tr></thead>
+          <tbody>
+            <tr><td><span class="cp-id-badge">admin</span></td><td>Administrator</td><td>Full access to every module, including user management.</td></tr>
+            <tr><td><span class="cp-id-badge">ops_staff</span></td><td>Operations Staff</td><td>Manages orders and shipments fulfillment, plus activities.</td></tr>
+            <tr><td><span class="cp-id-badge">team_lead</span></td><td>Team Lead</td><td>Coordinates activity tasks and activities.</td></tr>
+            <tr><td><span class="cp-id-badge">reviewer</span></td><td>Reviewer</td><td>Reviews violations and appeals; reads dashboards.</td></tr>
+            <tr><td><span class="cp-id-badge">regular</span></td><td>Regular User</td><td>Standard user: browse and sign up for activities; file and view own violations.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <div class="card">
         <div id="users-table">Loading…</div>
         <div id="pagination"></div>
@@ -114,7 +135,7 @@ async function loadUsers(page) {
         <tbody>${users.map(u => `<tr>
           <td>${u.id}</td>
           <td><strong>${u.username}</strong></td>
-          <td>${ROLE_LABELS[u.role] || u.role}</td>
+          <td>${ROLE_LABELS[u.role] || u.role} <span class="cp-id-badge" style="font-size:11px" title="Role code">${u.role}</span></td>
           <td style="font-size:12px">${fmt(u.created_at)}</td>
           <td>
             <button class="layui-btn layui-btn-sm layui-btn-danger"

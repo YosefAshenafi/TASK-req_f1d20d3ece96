@@ -183,4 +183,73 @@ class Activity
 
         return json(['code' => 200, 'msg' => 'Activity unsaved', 'data' => []]);
     }
+
+    /**
+     * DELETE /api/activities/{id} — Admin or Operations Staff.
+     *
+     * Hard delete with hierarchical cascade: removes the activity together with
+     * every record connected to it (signups, tasks, saves, tags, versions) in a
+     * single transaction, then drops the activity from the search index. Linked
+     * orders are kept but unlinked (activity_id → NULL) so financial records are
+     * never silently destroyed. Irreversible.
+     */
+    public function destroy(Request $request, int $id)
+    {
+        if (!in_array($request->user_role, ['admin', 'ops_staff'], true)) {
+            throw new ForbiddenException('Operations Staff or Administrator access required');
+        }
+
+        $activity = ActivityModel::find($id);
+        if (!$activity) throw new NotFoundException('Activity not found');
+
+        $counts = Db::transaction(function () use ($id) {
+            $c = [
+                'signups'         => Db::table('activity_signups')->where('activity_id', $id)->count(),
+                'tasks'           => Db::table('activity_tasks')->where('activity_id', $id)->count(),
+                'saves'           => Db::table('activity_saves')->where('activity_id', $id)->count(),
+                'tags'            => Db::table('activity_tags')->where('activity_id', $id)->count(),
+                'versions'        => Db::table('activity_versions')->where('activity_id', $id)->count(),
+                'orders_unlinked' => Db::table('orders')->where('activity_id', $id)->count(),
+            ];
+
+            // Keep orders (and their financial records) — just detach them.
+            Db::table('orders')->where('activity_id', $id)->update(['activity_id' => null]);
+
+            // Connected children.
+            Db::table('activity_signups')->where('activity_id', $id)->delete();
+            Db::table('activity_tasks')->where('activity_id', $id)->delete();
+            Db::table('activity_saves')->where('activity_id', $id)->delete();
+            Db::table('activity_tags')->where('activity_id', $id)->delete();
+
+            // Detach current_version_id before removing versions so the self
+            // reference cannot block the delete, then remove versions + activity.
+            Db::table('activities')->where('id', $id)->update(['current_version_id' => null]);
+            Db::table('activity_versions')->where('activity_id', $id)->delete();
+            Db::table('activities')->where('id', $id)->delete();
+
+            return $c;
+        });
+
+        try { (new \app\service\SearchIndexService())->deleteIndex('activity', $id); } catch (\Throwable $e) {}
+        $this->audit($request, 'activity', $id, $counts);
+        Log::info('activity_deleted', ['id' => $id, 'by' => $request->user_id, 'cascade' => $counts]);
+
+        return json(['code' => 200, 'msg' => 'Activity deleted', 'data' => ['id' => $id, 'cascade' => $counts]]);
+    }
+
+    /** Best-effort audit-trail entry for a destructive action. */
+    private function audit(Request $request, string $entityType, int $entityId, array $payload): void
+    {
+        try {
+            Db::table('audit_log')->insert([
+                'user_id'     => (int)$request->user_id,
+                'action'      => 'delete',
+                'entity_type' => $entityType,
+                'entity_id'   => $entityId,
+                'payload'     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('audit_write_failed', ['entity' => $entityType, 'id' => $entityId, 'error' => $e->getMessage()]);
+        }
+    }
 }

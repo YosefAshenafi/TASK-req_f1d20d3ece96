@@ -139,10 +139,10 @@ async function loadViolations(page) {
           </td>
           <td>${badge(v.status || 'active')}</td>
           <td style="font-size:12px">${fmt(v.created_at)}</td>
-          <td>${v.appeal_status === null
+          <td style="white-space:nowrap;">${v.appeal_status === null
             ? `<button class="layui-btn layui-btn-sm layui-btn-primary" onclick="submitAppeal(${v.id})">Appeal</button>`
             : `<em style="font-size:12px">${v.appeal_status}</em>`
-          }</td>
+          }${hasRole('admin','reviewer') ? ` <button class="layui-btn layui-btn-sm layui-btn-danger" onclick="deleteViolation(${v.id})">Delete</button>` : ''}</td>
         </tr>`).join('')}</tbody>
       </table>`;
     renderPagination('pagination', currentPage, Math.ceil((res.data.total || 0) / 15), 'loadViolations');
@@ -161,6 +161,18 @@ async function submitAppeal(id) {
     loadViolations(currentPage);
   } catch (err) {
     toast(err.data?.msg || 'Appeal failed.', 'error');
+  }
+}
+
+async function deleteViolation(id) {
+  if (!confirm(`Delete violation #${id} and ALL connected records (evidence, appeals, appeal reviews)?\n\nThe subject's demerit points will be adjusted accordingly. This cannot be undone.`)) return;
+  try {
+    await API.delete(`/violations/${id}`);
+    toast('Violation deleted.', 'success');
+    loadViolations(currentPage);
+    loadPointSummary();
+  } catch (err) {
+    toast(err.data?.msg || 'Delete failed.', 'error');
   }
 }
 

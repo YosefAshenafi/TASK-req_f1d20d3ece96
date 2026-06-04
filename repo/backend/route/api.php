@@ -26,6 +26,7 @@ Route::group('api', function () {
         Route::post('', 'Activity/create');
         Route::get(':id', 'Activity/show')->middleware(\app\middleware\BehaviorCapture::class);
         Route::put(':id', 'Activity/update');
+        Route::delete(':id', 'Activity/destroy');
         Route::patch(':id/state', 'Activity/transition');
         Route::get(':id/versions', 'Activity/versions');
         Route::post(':id/signups', 'Activity/signup');
@@ -43,6 +44,7 @@ Route::group('api', function () {
         Route::get('', 'Order/index');
         Route::post('', 'Order/create');
         Route::get(':id', 'Order/show');
+        Route::delete(':id', 'Order/destroy');
         Route::patch(':id/state', 'Order/transition');
         Route::post(':id/refund', 'Order/refund');
         Route::post(':id/invoice-corrections', 'Order/requestCorrection');
@@ -55,6 +57,7 @@ Route::group('api', function () {
         Route::get('', 'Fulfillment/index');
         Route::post('', 'Fulfillment/create');
         Route::get(':id', 'Fulfillment/show');
+        Route::delete(':id', 'Fulfillment/destroy');
         Route::post(':id/events', 'Fulfillment/addEvent');
         Route::patch(':id/deliver', 'Fulfillment/confirmDelivery');
         Route::post(':id/exceptions', 'Fulfillment/recordException');
@@ -75,6 +78,7 @@ Route::group('api', function () {
         Route::get('', 'Violation/index');
         Route::post('', 'Violation/create');
         Route::get(':id', 'Violation/show');
+        Route::delete(':id', 'Violation/destroy');
         Route::post(':id/evidence', 'Violation/attachEvidence');
         Route::post(':id/appeals', 'Violation/appeal');
         Route::patch(':id/appeals/review', 'Violation/reviewAppeal');

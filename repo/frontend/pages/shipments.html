@@ -175,7 +175,8 @@ async function loadShipments(page) {
           <td style="font-size:12px">${fmt(s.created_at)}</td>
           <td style="white-space:nowrap;">
             <button class="layui-btn layui-btn-sm layui-btn-primary" onclick="showEvents(${s.id})">Events</button>
-            ${canAct && s.status !== 'delivered' ? `<button class="layui-btn layui-btn-sm" onclick="deliver(${s.id})">Deliver</button>` : ''}
+            ${canAct && s.status !== 'delivered' ? `<button class="layui-btn layui-btn-sm" onclick="deliver(${s.id})">Deliver</button> ` : ''}
+            ${canAct ? `<button class="layui-btn layui-btn-sm layui-btn-danger" onclick="deleteShipment(${s.id})">Delete</button>` : ''}
           </td>
         </tr>`).join('')}</tbody>
       </table>`;
@@ -184,6 +185,18 @@ async function loadShipments(page) {
   } catch {
     document.getElementById('shipments-table').innerHTML =
       '<p style="color:var(--c-danger)">Failed to load shipments.</p>';
+  }
+}
+
+async function deleteShipment(id) {
+  if (!confirm(`Delete shipment #${id} and ALL its packages and scan events?\n\nThis cannot be undone.`)) return;
+  try {
+    const res = await API.delete(`/shipments/${id}`);
+    const c = res.data?.cascade || {};
+    toast(`Shipment deleted (removed ${c.packages||0} packages, ${c.events||0} events).`, 'success');
+    loadShipments(currentPage);
+  } catch (err) {
+    toast(err.data?.msg || 'Delete failed.', 'error');
   }
 }
 

@@ -16,7 +16,10 @@ const API = (() => {
   }
 
   async function request(method, path, body) {
-    const opts = { method, headers: headers() };
+    // `no-store` guarantees the browser never serves a cached response for a
+    // data request — so list endpoints always reflect the latest state right
+    // after a create/update/delete, with no manual page refresh needed.
+    const opts = { method, headers: headers(), cache: 'no-store' };
     if (body !== undefined) opts.body = JSON.stringify(body);
     const res = await fetch(BASE + path, opts);
     const text = await res.text();

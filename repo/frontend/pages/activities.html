@@ -302,7 +302,8 @@ function renderTable(rows) {
           ${a.status === 'published' ? `<button class="layui-btn layui-btn-sm layui-btn-normal" onclick="signup(${a.id})">Sign Up</button> ` : ''}
           ${canEdit ? `<button class="layui-btn layui-btn-sm layui-btn-warm" onclick="openEditModal(_activityMap[${a.id}])">Edit</button> ` : ''}
           ${canViewLog ? `<button class="layui-btn layui-btn-sm layui-btn-primary" onclick="showChangelog(${a.id})">Log</button> ` : ''}
-          ${canEdit && a.status === 'draft' ? `<button class="layui-btn layui-btn-sm" onclick="transition(${a.id},'published')">Publish</button>` : ''}
+          ${canEdit && a.status === 'draft' ? `<button class="layui-btn layui-btn-sm" onclick="transition(${a.id},'published')">Publish</button> ` : ''}
+          ${canEdit ? `<button class="layui-btn layui-btn-sm layui-btn-danger" onclick="deleteActivity(${a.id})">Delete</button>` : ''}
         </td>
       </tr>`;
       }).join('')}</tbody>
@@ -316,6 +317,18 @@ async function signup(activityId) {
     loadActivities(currentPage);
   } catch (err) {
     toast(err.data?.msg || 'Signup failed.', 'error');
+  }
+}
+
+async function deleteActivity(activityId) {
+  if (!confirm(`Delete activity #${activityId} and ALL connected records (tasks, signups, versions, tags, saves)?\n\nLinked orders are kept but unlinked. This cannot be undone.`)) return;
+  try {
+    const res = await API.delete(`/activities/${activityId}`);
+    const c = res.data?.cascade || {};
+    toast(`Activity deleted (removed ${c.tasks||0} tasks, ${c.signups||0} signups).`, 'success');
+    loadActivities(currentPage);
+  } catch (err) {
+    toast(err.data?.msg || 'Delete failed.', 'error');
   }
 }
 
