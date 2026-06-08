@@ -418,20 +418,20 @@ class SearchIndexService
     }
 
     /**
-     * Basic CJK → pinyin mapping for common characters.
-     * In production, replace with overtrue/pinyin library.
+     * Build the transliteration-normalised form of a display name for the
+     * `pinyin_name` index column.
+     *
+     * Non-ASCII letters are folded to their closest ASCII equivalent and the
+     * result is lower-cased, so the optional `use_pinyin` matching path in
+     * matchScore() can match accent- and case-insensitively (e.g. a query for
+     * "cafe" matches an indexed "Café Catering Order").
      */
     private function computePinyin(string $text): string
     {
-        static $map = [
-            '设备' => 'shebei', '活动' => 'huodong', '租赁' => 'zulin',
-            '打印' => 'dayin',  '材料' => 'cailiao', '人员' => 'renyuan',
-            '团队' => 'tuandui','管理' => 'guanli',  '系统' => 'xitong',
-        ];
-        $pinyin = $text;
-        foreach ($map as $zh => $py) {
-            $pinyin = str_replace($zh, $py, $pinyin);
+        $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
+        if ($ascii === false) {
+            $ascii = $text;
         }
-        return $pinyin;
+        return mb_strtolower(trim($ascii));
     }
 }

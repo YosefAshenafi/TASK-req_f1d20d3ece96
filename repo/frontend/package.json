@@ -1,0 +1,10 @@
+{
+  "name": "campus-portal-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Layui-based frontend for the Unified Campus Operations & Logistics Management Portal. Static HTML/CSS/JS served by nginx; no build step or runtime npm dependencies.",
+  "scripts": {
+    "test": "node ../tests/frontend/test-fmt.js && node ../tests/frontend/test-tags.js && node ../tests/frontend/test-render.js"
+  },
+  "license": "UNLICENSED"
+}

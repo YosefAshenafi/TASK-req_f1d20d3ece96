@@ -1,0 +1,5 @@
+# Bind-mount target for /app/public/uploads (see docker-compose.yml). User-uploaded
+# violation evidence is written here at runtime by ViolationService and must never
+# be committed. Keep the directory, ignore its contents.
+*
+!.gitignore

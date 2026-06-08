@@ -1,0 +1,4 @@
+# Generated dashboard exports (PNG/PDF/Excel) are written here at runtime by
+# ExportService and must never be committed. Keep the directory, ignore its contents.
+*
+!.gitignore
