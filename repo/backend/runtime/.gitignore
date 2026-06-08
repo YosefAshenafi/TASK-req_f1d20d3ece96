@@ -1,0 +1,5 @@
+# ThinkPHP writes caches, logs, sessions and compiled templates here at runtime.
+# Keep the directory (it is the bind-mount target for the backend container) but
+# never commit its generated contents.
+*
+!.gitignore

@@ -1,2 +1,5 @@
 # Planning artifacts (private, never published)
 plans/
+
+# Claude Code project state — recreated by the tool, never part of the deliverable
+.claude/

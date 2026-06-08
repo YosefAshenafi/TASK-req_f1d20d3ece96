@@ -31,6 +31,11 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      # Keep the image's composer-installed dependencies: the ./backend bind mount
+      # above would otherwise shadow /app/vendor with the (un-committed) host dir.
+      # This anonymous volume is initialised from the image, so `vendor/` need not
+      # be committed to the repo.
+      - /app/vendor
       - ./tests:/app/tests
       - ./phpunit.xml:/app/phpunit.xml
       - ./frontend:/app/frontend

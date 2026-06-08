@@ -1,0 +1,8 @@
+# Composer dependencies.
+# These are installed inside the image by `composer install` (see Dockerfile) and
+# surfaced to the bind-mounted /app at runtime via the named /app/vendor volume in
+# docker-compose.yml. They must never be committed.
+/vendor/
+
+# PHPUnit result cache (regenerated on each run).
+.phpunit.result.cache
